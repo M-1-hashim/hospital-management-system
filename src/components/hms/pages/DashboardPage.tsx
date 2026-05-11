@@ -34,7 +34,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useLanguageStore, useAuthStore } from '@/store';
+import { useLanguageStore, useAuthStore, useNavStore } from '@/store';
 import { StatsCard } from '@/components/hms/shared/StatsCard';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { cn } from '@/lib/utils';
@@ -130,9 +130,9 @@ function formatCurrency(value: number): string {
 
 function generateDailyVisits() {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  return days.map((day) => ({
+  return days.map((day, i) => ({
     day,
-    visits: Math.floor(Math.random() * 30) + 15,
+    visits: 18 + ((i * 7 + 3) % 11),
   }));
 }
 
@@ -147,11 +147,19 @@ function generateDepartmentData(stats: Stats) {
   ];
 }
 
-function generateMonthlyRevenue() {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-  return months.map((month) => ({
+function generateMonthlyRevenue(currentMonthRevenue?: number) {
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0-based
+  const monthFormatter = new Intl.DateTimeFormat('en', { month: 'short' });
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const m = (currentMonth - 5 + i + 12) % 12;
+    const d = new Date(now.getFullYear(), m, 1);
+    return monthFormatter.format(d);
+  });
+  const base = currentMonthRevenue || 300000;
+  return months.map((month, i) => ({
     month,
-    revenue: Math.floor(Math.random() * 500000) + 300000,
+    revenue: Math.floor(base * (0.5 + ((i * 29 + 17) % 9) / 10)),
   }));
 }
 
@@ -282,14 +290,31 @@ export default function DashboardPage() {
   const fetchData = useCallback(async () => {
     try {
       const [statsRes, patientsRes, appointmentsRes] = await Promise.allSettled([
-        fetch('/api/settings/stats'),
+        fetch('/api/settings?stats=true'),
         fetch('/api/patients?limit=5'),
         fetch('/api/appointments?status=confirmed'),
       ]);
 
       if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
         const data = await statsRes.value.json();
-        setStats(data);
+        // Map nested API response to flat Stats interface
+        setStats({
+          totalPatients: data.patients?.total || 0,
+          inpatientCount: data.patients?.inpatients || 0,
+          outpatientCount: data.patients?.outpatients || 0,
+          emergencyCount: data.patients?.emergency || 0,
+          totalDoctors: data.doctors?.active || data.doctors?.total || 0,
+          totalBeds: data.beds?.total || 0,
+          occupiedBeds: data.beds?.occupied || 0,
+          emptyBeds: data.beds?.available || 0,
+          todayAppointments: data.appointments?.today || 0,
+          todayRevenue: data.revenue?.today || 0,
+          monthlyRevenue: data.revenue?.month || 0,
+          totalRevenue: (data.revenue?.today || 0) + (data.revenue?.month || 0),
+          unpaidInvoices: data.revenue?.unpaid ? Math.round(data.revenue.unpaid / 100000) : 0,
+          lowStockMedicines: data.medicines?.lowStock || 0,
+          expiringMedicines: 0, // not in API
+        });
       } else {
         // Fallback demo data
         setStats({
@@ -352,7 +377,7 @@ export default function DashboardPage() {
 
   const dailyVisits = generateDailyVisits();
   const departmentData = stats ? generateDepartmentData(stats) : [];
-  const monthlyRevenueData = generateMonthlyRevenue();
+  const monthlyRevenueData = generateMonthlyRevenue(stats?.monthlyRevenue);
 
   // ── Greeting ──────────────────────────────────────────────
 
@@ -388,11 +413,11 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="mt-2 flex items-center gap-2 sm:mt-0">
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
               <ArrowUpRight className="size-3.5" />
               {t('export_excel')}
             </Button>
-            <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
+            <Button size="sm" className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => useNavStore.getState().setCurrentPage('reports')}>
               {t('reports')}
             </Button>
           </div>
@@ -748,7 +773,7 @@ export default function DashboardPage() {
           {/* ICU Beds Full Alert */}
           <AlertCard
             title={t('icu_beds_full')}
-            message="All ICU beds are currently occupied. Consider transferring patients."
+            message={t('icu_full_message')}
             borderColor="border-l-red-500"
             iconBg="bg-red-100 dark:bg-red-900/50"
             iconColor="text-red-600 dark:text-red-400"
@@ -758,7 +783,7 @@ export default function DashboardPage() {
           {/* Expiring Medicines Alert */}
           <AlertCard
             title={`${t('expiring_meds')} (${stats?.expiringMedicines ?? 0})`}
-            message={`${stats?.expiringMedicines ?? 0} medicines are approaching their expiry date.`}
+            message={`${stats?.expiringMedicines ?? 0} ${t('expiring_meds_message')}`}
             borderColor="border-l-amber-500"
             iconBg="bg-amber-100 dark:bg-amber-900/50"
             iconColor="text-amber-600 dark:text-amber-400"
@@ -768,7 +793,7 @@ export default function DashboardPage() {
           {/* Cancelled Appointments Alert */}
           <AlertCard
             title={t('cancelled_appointments')}
-            message="Some appointments were cancelled today. Review the cancellation queue."
+            message={t('cancelled_appts_message')}
             borderColor="border-l-purple-500"
             iconBg="bg-purple-100 dark:bg-purple-900/50"
             iconColor="text-purple-600 dark:text-purple-400"

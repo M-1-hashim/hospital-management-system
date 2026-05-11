@@ -211,6 +211,47 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// DELETE /api/billing?id=xxx - Delete invoice
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Invoice ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const invoice = await db.invoice.findUnique({ where: { id } });
+    if (!invoice) {
+      return NextResponse.json(
+        { error: 'Invoice not found' },
+        { status: 404 }
+      );
+    }
+    if (invoice.paymentStatus === 'paid') {
+      return NextResponse.json(
+        { error: 'Cannot delete paid invoice' },
+        { status: 400 }
+      );
+    }
+
+    // Delete invoice items first
+    await db.invoiceItem.deleteMany({ where: { invoiceId: id } });
+    await db.invoice.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Billing DELETE error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete invoice' },
+      { status: 500 }
+    );
+  }
+}
+
 // Record payment helper
 async function recordPayment(request: NextRequest) {
   const { searchParams } = new URL(request.url);

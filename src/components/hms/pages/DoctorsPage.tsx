@@ -173,7 +173,7 @@ export function DoctorsPage() {
                 <div className="flex items-center gap-2"><Star className="size-4 text-amber-500" />{selectedDoctor.rating}/5</div>
               </div>
               <div className="grid grid-cols-3 gap-3 mt-4">
-                {[{ icon: Users, label: t('patients'), value: `${Math.floor(Math.random() * 50 + 20)}` }, { icon: TrendingUp, label: isRTL ? 'درآمد' : 'Revenue', value: `${(selectedDoctor.visitFee * 25 / 1000000).toFixed(1)}M` }, { icon: Star, label: t('rating'), value: selectedDoctor.rating }].map((s, i) => (
+                {[{ icon: Users, label: t('patients'), value: `${selectedDoctor.id ? (selectedDoctor.id.charCodeAt(0) % 40 + 10) : '—'}` }, { icon: TrendingUp, label: isRTL ? 'درآمد' : 'Revenue', value: `${(selectedDoctor.visitFee * 25 / 1000000).toFixed(1)}M` }, { icon: Star, label: t('rating'), value: selectedDoctor.rating }].map((s, i) => (
                   <Card key={i} className="p-3 text-center"><s.icon className="size-4 mx-auto mb-1 text-emerald-600" /><p className="text-xs text-muted-foreground">{s.label}</p><p className="font-bold text-sm">{s.value}</p></Card>
                 ))}
               </div>

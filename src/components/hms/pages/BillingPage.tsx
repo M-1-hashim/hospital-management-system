@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Receipt, Plus, Search, Printer, Eye, Trash2, DollarSign, CreditCard, TrendingUp, AlertCircle, CalendarDays, User } from 'lucide-react';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { EmptyState } from '@/components/hms/shared/EmptyState';
+import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
@@ -40,6 +41,8 @@ export function BillingPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [form, setForm] = useState({ patientId: '', discount: 0, tax: 0, paymentMethod: 'cash' });
   const [items, setItems] = useState<InvoiceItem[]>([{ description: '', type: 'service', quantity: 1, unitPrice: 0, total: 0 }]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -48,7 +51,7 @@ export function BillingPage() {
       if (filterStatus !== 'all') params.set('status', filterStatus);
       const [invRes, statRes, patRes] = await Promise.allSettled([
         fetch(`/api/billing?${params}`).then(r => r.json()),
-        fetch('/api/billing/stats').then(r => r.json()),
+        fetch('/api/billing?stats=true').then(r => r.json()),
         fetch('/api/patients?limit=50').then(r => r.json()),
       ]);
       if (invRes.status === 'fulfilled' && invRes.value) setInvoices(invRes.value.data || invRes.value);
@@ -86,6 +89,15 @@ export function BillingPage() {
     } catch { toast.error(t('error')); }
   };
 
+  const handleDeleteInvoice = async () => {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(`/api/billing?id=${deleteTarget}`, { method: 'DELETE' });
+      if (res.ok) { toast.success(t('deleted')); setDeleteConfirmOpen(false); setDeleteTarget(null); fetchData(); }
+      else toast.error(t('error'));
+    } catch { toast.error(t('error')); }
+  };
+
   const handlePay = async (inv: Invoice) => {
     const amount = inv.total - inv.paidAmount;
     try {
@@ -112,16 +124,16 @@ export function BillingPage() {
       <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { icon: DollarSign, label: t('today_revenue'), value: Number(stats.todayRevenue || 0).toLocaleString(), color: 'emerald' },
-          { icon: TrendingUp, label: isRTL ? 'درآمد ماهانه' : 'Monthly Revenue', value: Number(stats.monthlyRevenue || 0).toLocaleString(), color: 'blue' },
-          { icon: Receipt, label: isRTL ? 'فاکتورهای پرداخت شده' : 'Paid Invoices', value: '—', color: 'green' },
-          { icon: AlertCircle, label: isRTL ? 'پرداخت نشده' : 'Unpaid', value: stats.unpaidInvoices || 0, color: 'red' },
+          { icon: TrendingUp, label: t('monthly_revenue_label'), value: Number(stats.monthlyRevenue || 0).toLocaleString(), color: 'blue' },
+          { icon: Receipt, label: t('paid_invoices'), value: '—', color: 'green' },
+          { icon: AlertCircle, label: t('unpaid_invoices'), value: stats.unpaidInvoices || 0, color: 'red' },
         ].map((s, i) => (
           <Card key={i}><CardContent className="p-4"><div className="flex items-center gap-3"><div className={`p-2 rounded-lg bg-${s.color}-100 dark:bg-${s.color}-900/30`}><s.icon className={`size-5 text-${s.color}-600`} /></div><div><p className="text-xs text-muted-foreground">{s.label}</p><p className="text-lg font-bold">{s.value}</p></div></div></CardContent></Card>
         ))}
       </motion.div>
 
       <Tabs defaultValue="invoices">
-        <TabsList><TabsTrigger value="invoices">{t('billing')}</TabsTrigger><TabsTrigger value="create">{isRTL ? 'صدور فاکتور' : 'Create Invoice'}</TabsTrigger><TabsTrigger value="charts">{isRTL ? 'نمودارها' : 'Charts'}</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="invoices">{t('billing')}</TabsTrigger><TabsTrigger value="create">{t('create_new_invoice')}</TabsTrigger><TabsTrigger value="charts">{t('charts')}</TabsTrigger></TabsList>
 
         <TabsContent value="invoices" className="space-y-4">
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3">
@@ -131,7 +143,7 @@ export function BillingPage() {
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/50"><th className={`p-3 text-start font-medium`}>{isRTL ? 'شماره فاکتور' : 'Invoice#'}</th><th className="p-3 text-start font-medium">{t('patient')}</th><th className="p-3 text-start font-medium">{isRTL ? 'تاریخ' : 'Date'}</th><th className="p-3 text-start font-medium">{t('total')}</th><th className="p-3 text-start font-medium">{t('payment_method')}</th><th className="p-3 text-start font-medium">{t('status')}</th><th className="p-3 text-start font-medium">{t('actions')}</th></tr></thead>
+                <thead><tr className="border-b bg-muted/50"><th className={`p-3 text-start font-medium`}>{t('invoice_number')}</th><th className="p-3 text-start font-medium">{t('patient')}</th><th className="p-3 text-start font-medium">{t('invoice_date')}</th><th className="p-3 text-start font-medium">{t('total')}</th><th className="p-3 text-start font-medium">{t('payment_method')}</th><th className="p-3 text-start font-medium">{t('status')}</th><th className="p-3 text-start font-medium">{t('actions')}</th></tr></thead>
                 <tbody>
                   {invoices.map((inv) => (
                     <tr key={inv.id} className="border-b hover:bg-muted/30">
@@ -144,6 +156,7 @@ export function BillingPage() {
                       <td className="p-3"><div className="flex gap-1">
                         <Button size="icon" variant="ghost" className="size-7" onClick={() => { setSelectedInvoice(inv); setViewOpen(true); }}><Eye className="size-3.5" /></Button>
                         {inv.paymentStatus !== 'paid' && <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700 text-xs" onClick={() => handlePay(inv)}>{t('paid')}</Button>}
+                        {inv.paymentStatus !== 'paid' && <Button size="icon" variant="ghost" className="size-7 text-destructive" onClick={() => { setDeleteTarget(inv.id); setDeleteConfirmOpen(true); }}><Trash2 className="size-3.5" /></Button>}
                       </div></td>
                     </tr>
                   ))}
@@ -156,23 +169,23 @@ export function BillingPage() {
 
         <TabsContent value="create" className="space-y-4">
           <Card>
-            <CardHeader><CardTitle>{isRTL ? 'صدور فاکتور جدید' : 'Create New Invoice'}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t('create_new_invoice')}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><Label>{t('patient')}</Label><Select value={form.patientId} onValueChange={v => setForm({ ...form, patientId: v })}><SelectTrigger><SelectValue placeholder={isRTL ? 'انتخاب بیمار' : 'Select patient'} /></SelectTrigger><SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>)}</SelectContent></Select></div>
-                <div><Label>{isRTL ? 'تخفیف (%)' : 'Discount (%)'}</Label><Input type="number" value={form.discount} onChange={e => setForm({ ...form, discount: Number(e.target.value) })} /></div>
-                <div><Label>{isRTL ? 'مالیات (%)' : 'Tax (%)'}</Label><Input type="number" value={form.tax} onChange={e => setForm({ ...form, tax: Number(e.target.value) })} /></div>
+                <div><Label>{t('patient')}</Label><Select value={form.patientId} onValueChange={v => setForm({ ...form, patientId: v })}><SelectTrigger><SelectValue placeholder={t('select_patient')} /></SelectTrigger><SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label>{t('discount')} (%)</Label><Input type="number" value={form.discount} onChange={e => setForm({ ...form, discount: Number(e.target.value) })} /></div>
+                <div><Label>{t('tax')} (%)</Label><Input type="number" value={form.tax} onChange={e => setForm({ ...form, tax: Number(e.target.value) })} /></div>
               </div>
               <Separator />
               <div className="space-y-2">
-                <div className="flex items-center justify-between"><h4 className="font-medium">{isRTL ? 'آیتم‌ها' : 'Items'}</h4><Button size="sm" variant="outline" onClick={addItem}><Plus className="size-3" />{t('add')}</Button></div>
+                <div className="flex items-center justify-between"><h4 className="font-medium">{t('items')}</h4><Button size="sm" variant="outline" onClick={addItem}><Plus className="size-3" />{t('add')}</Button></div>
                 {items.map((item, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-4"><Label className="text-xs">{isRTL ? 'شرح' : 'Description'}</Label><Input value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} placeholder={isRTL ? 'خدمت یا دارو' : 'Service or medicine'} /></div>
-                    <div className="col-span-2"><Label className="text-xs">{isRTL ? 'نوع' : 'Type'}</Label><Select value={item.type} onValueChange={v => updateItem(i, 'type', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['service','medicine','lab','room','doctor'].map(tp => <SelectItem key={tp} value={tp}>{tp}</SelectItem>)}</SelectContent></Select></div>
-                    <div className="col-span-1"><Label className="text-xs">{isRTL ? 'تعداد' : 'Qty'}</Label><Input type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', Number(e.target.value))} /></div>
-                    <div className="col-span-2"><Label className="text-xs">{isRTL ? 'قیمت واحد' : 'Unit Price'}</Label><Input type="number" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', Number(e.target.value))} /></div>
-                    <div className="col-span-2"><Label className="text-xs">{isRTL ? 'مبلغ' : 'Total'}</Label><Input value={Number(item.total).toLocaleString()} readOnly className="bg-muted" /></div>
+                    <div className="col-span-4"><Label className="text-xs">{t('description')}</Label><Input value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} placeholder={t('service_or_medicine')} /></div>
+                    <div className="col-span-2"><Label className="text-xs">{t('type')}</Label><Select value={item.type} onValueChange={v => updateItem(i, 'type', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['service','medicine','lab','room','doctor'].map(tp => <SelectItem key={tp} value={tp}>{tp}</SelectItem>)}</SelectContent></Select></div>
+                    <div className="col-span-1"><Label className="text-xs">{t('quantity')}</Label><Input type="number" value={item.quantity} onChange={e => updateItem(i, 'quantity', Number(e.target.value))} /></div>
+                    <div className="col-span-2"><Label className="text-xs">{t('unit_price')}</Label><Input type="number" value={item.unitPrice} onChange={e => updateItem(i, 'unitPrice', Number(e.target.value))} /></div>
+                    <div className="col-span-2"><Label className="text-xs">{t('amount')}</Label><Input value={Number(item.total).toLocaleString()} readOnly className="bg-muted" /></div>
                     <div className="col-span-1"><Button size="icon" variant="ghost" className="size-9 text-destructive" onClick={() => removeItem(i)}><Trash2 className="size-4" /></Button></div>
                   </div>
                 ))}
@@ -180,16 +193,16 @@ export function BillingPage() {
               <Separator />
               <div className="flex justify-end">
                 <div className="w-64 space-y-1 text-sm">
-                  <div className="flex justify-between"><span>{isRTL ? 'جمع فرعی' : 'Subtotal'}</span><span>{subtotal.toLocaleString()}</span></div>
-                  {form.discount > 0 && <div className="flex justify-between text-amber-600"><span>{isRTL ? 'تخفیف' : 'Discount'} ({form.discount}%)</span><span>-{discountAmt.toLocaleString()}</span></div>}
-                  {form.tax > 0 && <div className="flex justify-between"><span>{isRTL ? 'مالیات' : 'Tax'} ({form.tax}%)</span><span>+{taxAmt.toLocaleString()}</span></div>}
+                  <div className="flex justify-between"><span>{t('subtotal')}</span><span>{subtotal.toLocaleString()}</span></div>
+                  {form.discount > 0 && <div className="flex justify-between text-amber-600"><span>{t('discount')} ({form.discount}%)</span><span>-{discountAmt.toLocaleString()}</span></div>}
+                  {form.tax > 0 && <div className="flex justify-between"><span>{t('tax')} ({form.tax}%)</span><span>+{taxAmt.toLocaleString()}</span></div>}
                   <Separator />
                   <div className="flex justify-between font-bold text-lg"><span>{t('total')}</span><span className="text-emerald-600">{total.toLocaleString()}</span></div>
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <Select value={form.paymentMethod} onValueChange={v => setForm({ ...form, paymentMethod: v })}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent>{['cash','card','insurance','installment'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select>
-                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleCreate}>{isRTL ? 'صدور فاکتور' : 'Create Invoice'}</Button>
+                <Select value={form.paymentMethod} onValueChange={v => setForm({ ...form, paymentMethod: v })}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent>{[t('cash'), t('card'), t('insurance_payment'), t('installment')].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select>
+                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleCreate}>{t('create_new_invoice')}</Button>
               </div>
             </CardContent>
           </Card>
@@ -197,11 +210,22 @@ export function BillingPage() {
 
         <TabsContent value="charts" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card><CardHeader><CardTitle>{isRTL ? 'درآمد ماهانه' : 'Monthly Revenue'}</CardTitle></CardHeader><CardContent><div className="h-64"><ResponsiveContainer><BarChart data={revenueData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip /><Bar dataKey="revenue" fill="#10b981" radius={[4,4,0,0]} /></BarChart></ResponsiveContainer></div></CardContent></Card>
-            <Card><CardHeader><CardTitle>{isRTL ? 'روش پرداخت' : 'Payment Methods'}</CardTitle></CardHeader><CardContent><div className="h-64"><ResponsiveContainer><PieChart><Pie data={payMethodData} innerRadius={50} outerRadius={80} dataKey="value" label>{payMethodData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></div></CardContent></Card>
+            <Card><CardHeader><CardTitle>{t('monthly_revenue_label')}</CardTitle></CardHeader><CardContent><div className="h-64"><ResponsiveContainer><BarChart data={revenueData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="month" /><YAxis /><Tooltip /><Bar dataKey="revenue" fill="#10b981" radius={[4,4,0,0]} /></BarChart></ResponsiveContainer></div></CardContent></Card>
+            <Card><CardHeader><CardTitle>{t('payment_methods')}</CardTitle></CardHeader><CardContent><div className="h-64"><ResponsiveContainer><PieChart><Pie data={payMethodData} innerRadius={50} outerRadius={80} dataKey="value" label>{payMethodData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></div></CardContent></Card>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setDeleteTarget(null); }}
+        onConfirm={handleDeleteInvoice}
+        title={`${t('delete')} ${t('invoice')}`}
+        description={t('delete_invoice_confirm')}
+        confirmLabel={t('delete')}
+        variant="danger"
+      />
 
       {/* View Invoice Dialog */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
@@ -210,10 +234,10 @@ export function BillingPage() {
             <DialogHeader><DialogTitle className="flex items-center gap-2"><Receipt />{selectedInvoice.invoiceNumber}</DialogTitle></DialogHeader>
             <div className="space-y-3 text-sm">
               <p>{t('patient')}: {selectedInvoice.patient?.firstName} {selectedInvoice.patient?.lastName}</p>
-              <p>{isRTL ? 'تاریخ' : 'Date'}: {new Date(selectedInvoice.createdAt).toLocaleDateString()}</p>
+              <p>{t('invoice_date')}: {new Date(selectedInvoice.createdAt).toLocaleDateString()}</p>
               <StatusBadge status={selectedInvoice.paymentStatus} />
-              <table className="w-full border text-xs mt-2"><thead><tr className="bg-muted"><th className="border p-2">{isRTL ? 'شرح' : 'Description'}</th><th className="border p-2">{isRTL ? 'نوع' : 'Type'}</th><th className="border p-2 text-end">{isRTL ? 'مبلغ' : 'Amount'}</th></tr></thead><tbody>{(selectedInvoice.items || []).map((item, i) => <tr key={i}><td className="border p-2">{item.description}</td><td className="border p-2">{item.type}</td><td className="border p-2 text-end">{Number(item.total).toLocaleString()}</td></tr>)}</tbody></table>
-              <div className="text-end space-y-1 font-medium"><p>{isRTL ? 'جمع' : 'Total'}: {Number(selectedInvoice.total).toLocaleString()}</p><p>{isRTL ? 'پرداخت شده' : 'Paid'}: {Number(selectedInvoice.paidAmount).toLocaleString()}</p></div>
+              <table className="w-full border text-xs mt-2"><thead><tr className="bg-muted"><th className="border p-2">{t('description')}</th><th className="border p-2">{t('type')}</th><th className="border p-2 text-end">{t('amount')}</th></tr></thead><tbody>{(selectedInvoice.items || []).map((item, i) => <tr key={i}><td className="border p-2">{item.description}</td><td className="border p-2">{item.type}</td><td className="border p-2 text-end">{Number(item.total).toLocaleString()}</td></tr>)}</tbody></table>
+              <div className="text-end space-y-1 font-medium"><p>{t('total')}: {Number(selectedInvoice.total).toLocaleString()}</p><p>{t('paid')}: {Number(selectedInvoice.paidAmount).toLocaleString()}</p></div>
               <Button className="w-full" onClick={printInvoice}><Printer className="size-4" />{t('print')}</Button>
             </div>
           </>)}

@@ -178,6 +178,24 @@ const bloodTypeColorMap: Record<string, string> = {
 };
 
 // ============================================================
+// Sub-component: InfoItem
+// ============================================================
+
+function InfoItem({ icon: Icon, label, value, className }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('flex items-center gap-3 rounded-lg border p-3', className)}>
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/50">
+        <Icon className="size-4 text-teal-600 dark:text-teal-400" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium truncate">{value || '—'}</p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Component
 // ============================================================
 
@@ -209,6 +227,7 @@ export default function PatientsPage() {
   // Detail sub-data
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [labTests, setLabTests] = useState<LabTest[]>([]);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // --- Form ---
@@ -362,17 +381,21 @@ export default function PatientsPage() {
     setDetailDialogOpen(true);
     setDetailLoading(true);
     try {
-      const [aptRes, labRes] = await Promise.all([
+      const [aptRes, labRes, rxRes] = await Promise.all([
         fetch(`/api/appointments?patientId=${patient.id}&limit=10`),
         fetch(`/api/laboratory?patientId=${patient.id}&limit=10`),
+        fetch(`/api/pharmacy?action=prescriptions&patientId=${patient.id}`),
       ]);
       const aptData = aptRes.ok ? await aptRes.json() : { appointments: [] };
       const labData = labRes.ok ? await labRes.json() : { labTests: [] };
+      const rxData = rxRes.ok ? await rxRes.json() : { data: [] };
       setAppointments(aptData.appointments || []);
       setLabTests(labData.labTests || []);
+      setPrescriptions(rxData.data || rxData || []);
     } catch {
       setAppointments([]);
       setLabTests([]);
+      setPrescriptions([]);
     } finally {
       setDetailLoading(false);
     }
@@ -502,23 +525,23 @@ export default function PatientsPage() {
       </motion.div>
 
       {/* ====== Table ====== */}
-      <motion.div variants={itemVariants} className="overflow-hidden rounded-xl border">
+      <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="font-semibold">{t('file_number')}</TableHead>
-              <TableHead className="font-semibold">{t('full_name')}</TableHead>
-              <TableHead className="hidden md:table-cell font-semibold">
+              <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('file_number')}</TableHead>
+              <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('full_name')}</TableHead>
+              <TableHead className="hidden md:table-cell px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t('phone')}
               </TableHead>
-              <TableHead className="hidden sm:table-cell font-semibold">
+              <TableHead className="hidden sm:table-cell px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t('blood_type')}
               </TableHead>
-              <TableHead className="font-semibold">{t('status')}</TableHead>
-              <TableHead className="hidden lg:table-cell font-semibold">
+              <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('status')}</TableHead>
+              <TableHead className="hidden lg:table-cell px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t('insurance')}
               </TableHead>
-              <TableHead className="text-end font-semibold">{t('actions')}</TableHead>
+              <TableHead className="text-end px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -554,7 +577,7 @@ export default function PatientsPage() {
                     animate="animate"
                     exit="exit"
                     transition={{ delay: idx * 0.03 }}
-                    className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                    className="border-b border-border/50 transition-colors hover:bg-muted/30 data-[state=selected]:bg-muted"
                   >
                     <TableCell className="font-mono text-sm font-medium">
                       {patient.fileNumber}
@@ -1288,10 +1311,32 @@ export default function PatientsPage() {
 
                 {/* --- Prescriptions Tab --- */}
                 <TabsContent value="prescriptions" className="mt-4">
-                  <div className="py-8 text-center text-muted-foreground">
-                    <Pill className="mx-auto mb-2 size-10 stroke-1" />
-                    <p>{t('no_prescriptions_found')}</p>
-                  </div>
+                  {detailLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {prescriptions.length > 0 ? (
+                        prescriptions.map((rx) => (
+                          <div key={rx.id} className="flex items-center justify-between rounded-lg border p-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">{rx.doctor ? `${rx.doctor.firstName} ${rx.doctor.lastName}` : '—'}</p>
+                              <p className="text-xs text-muted-foreground">{rx.testDate} &middot; {rx.testName}</p>
+                            </div>
+                            <StatusBadge status={rx.status} />
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                          <Pill className="mb-2 size-10 opacity-40" />
+                          <p className="text-sm">{t('no_data')}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </>
@@ -1322,28 +1367,4 @@ export default function PatientsPage() {
   );
 }
 
-// ============================================================
-// Sub-component: Info Item
-// ============================================================
 
-function InfoItem({
-  icon: Icon,
-  label,
-  value,
-  className,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn('rounded-lg border p-3', className)}>
-      <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-1">
-        <Icon className="size-4" />
-        {label}
-      </div>
-      <p className="text-sm font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}

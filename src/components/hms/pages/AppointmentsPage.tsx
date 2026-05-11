@@ -127,10 +127,12 @@ function formatDisplayDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+function getMonthNames(isRTL: boolean): string[] {
+  const locale = isRTL ? 'fa-IR' : 'en-US';
+  return Array.from({ length: 12 }, (_, i) =>
+    new Date(2024, i).toLocaleDateString(locale, { month: 'long' })
+  );
+}
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -171,6 +173,7 @@ const itemVariants = {
 
 export default function AppointmentsPage() {
   const { t, isRTL } = useLanguageStore();
+  const monthNames = getMonthNames(isRTL);
 
   // ── State ──────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -517,7 +520,7 @@ export default function AppointmentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t('appointments')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage and schedule patient appointments
+            {t('manage_appointments')}
           </p>
         </div>
 
@@ -534,7 +537,7 @@ export default function AppointmentsPage() {
               )}
             >
               <List className="size-3.5" />
-              <span className="hidden sm:inline">List</span>
+              <span className="hidden sm:inline">{t('all')}</span>
             </Button>
             <Button
               variant={viewMode === 'calendar' ? 'default' : 'ghost'}
@@ -662,7 +665,7 @@ export default function AppointmentsPage() {
                     <ChevronLeft className={cn('size-4', isRTL && 'rotate-180')} />
                   </Button>
                   <CardTitle className="text-lg font-semibold">
-                    {MONTH_NAMES[calMonth]} {calYear}
+                    {monthNames[calMonth]} {calYear}
                   </CardTitle>
                   <Button
                     variant="ghost"
@@ -726,20 +729,20 @@ export default function AppointmentsPage() {
                 <CardTitle className="text-base font-semibold">
                   {selectedDay !== null
                     ? formatDisplayDate(`${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`)
-                    : 'Select a day'}
+                    : t('click_on_day')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {selectedDay === null ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
                     <CalendarDays className="size-8 stroke-1" />
-                    <p className="text-sm">Click on a day to view appointments</p>
+                    <p className="text-sm">{t('click_on_day')}</p>
                   </div>
                 ) : selectedDayAppointments.length === 0 ? (
                   <EmptyState
                     icon={CalendarDays}
-                    title="No appointments"
-                    description="No appointments scheduled for this day"
+                    title={t('no_appointments_for_day')}
+                    description={t('no_appointments_for_day')}
                     actionLabel={t('book_appointment')}
                     onAction={() => {
                       setFormDate(`${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`);
@@ -822,10 +825,10 @@ export default function AppointmentsPage() {
                   <Select value={doctorFilter} onValueChange={setDoctorFilter}>
                     <SelectTrigger className="w-[160px] h-9 text-xs">
                       <Filter className="size-3 me-1 text-muted-foreground" />
-                      <SelectValue placeholder="All Doctors" />
+                      <SelectValue placeholder={t('all_doctors')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Doctors</SelectItem>
+                      <SelectItem value="all">{t('all_doctors')}</SelectItem>
                       {activeDoctors.map((d) => (
                         <SelectItem key={d.id} value={d.id}>
                           Dr. {d.firstName} {d.lastName}
@@ -861,11 +864,11 @@ export default function AppointmentsPage() {
               ) : filteredAppointments.length === 0 ? (
                 <EmptyState
                   icon={CalendarDays}
-                  title="No appointments found"
+                  title={t('no_appointments_found')}
                   description={
                     statusFilter !== 'all' || doctorFilter !== 'all' || searchQuery
-                      ? 'Try adjusting your filters'
-                      : 'Create your first appointment to get started'
+                      ? t('try_adjusting_filters')
+                      : t('create_first_appointment')
                   }
                   actionLabel={t('book_appointment')}
                   onAction={() => setAddDialogOpen(true)}
@@ -995,7 +998,7 @@ export default function AppointmentsPage() {
               {t('book_appointment')}
             </DialogTitle>
             <DialogDescription>
-              Schedule a new appointment for a patient
+              {t('schedule_new_appointment')}
             </DialogDescription>
           </DialogHeader>
 
@@ -1003,12 +1006,12 @@ export default function AppointmentsPage() {
             {/* Patient Select */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                Patient <span className="text-red-500">*</span>
+                {t('patient_label')} <span className="text-red-500">*</span>
               </Label>
               <Select value={formPatientId} onValueChange={setFormPatientId}>
                 <SelectTrigger className="w-full">
                   <User className="size-4 me-2 text-muted-foreground" />
-                  <SelectValue placeholder="Select patient..." />
+                  <SelectValue placeholder={t('select_patient')} />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
                   {patients.map((p) => (

@@ -141,6 +141,45 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// DELETE /api/laboratory?id=xxx - Delete lab test
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Lab test ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const test = await db.labTest.findUnique({ where: { id } });
+    if (!test) {
+      return NextResponse.json(
+        { error: 'Lab test not found' },
+        { status: 404 }
+      );
+    }
+    if (test.status === 'completed') {
+      return NextResponse.json(
+        { error: 'Cannot delete completed lab test' },
+        { status: 400 }
+      );
+    }
+
+    await db.labTest.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Laboratory DELETE error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete lab test' },
+      { status: 500 }
+    );
+  }
+}
+
 // Lab stats helper
 async function getLabStats() {
   const now = new Date();

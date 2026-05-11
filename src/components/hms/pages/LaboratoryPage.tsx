@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { FlaskConical, Plus, Search, Printer, Eye, Edit, Trash2, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
+import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
@@ -37,6 +38,8 @@ export function LaboratoryPage() {
   const [viewOpen, setViewOpen] = useState(false);
   const [selectedTest, setSelectedTest] = useState<LabTest | null>(null);
   const [resultRows, setResultRows] = useState<ResultRow[]>([{ name: '', value: '', unit: '', normalMin: '', normalMax: '', status: 'normal' }]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [form, setForm] = useState({ patientId: '', doctorId: '', testName: '', category: 'blood', cost: '' });
 
   const fetchData = useCallback(async () => {
@@ -118,6 +121,15 @@ export function LaboratoryPage() {
     } catch { toast.error(t('error')); }
   };
 
+  const handleDeleteTest = async () => {
+    if (!deleteTarget) return;
+    try {
+      const res = await fetch(`/api/laboratory?id=${deleteTarget}`, { method: 'DELETE' });
+      if (res.ok) { toast.success(t('deleted')); setDeleteConfirmOpen(false); setDeleteTarget(null); fetchData(); }
+      else toast.error(t('error'));
+    } catch { toast.error(t('error')); }
+  };
+
   const getStatusColor = (s: string) => s === 'normal' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : s === 'borderline' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
 
   const catData = ['blood', 'urine', 'imaging', 'other'].map(c => ({ name: c, count: tests.filter(t => t.category === c).length }));
@@ -127,10 +139,10 @@ export function LaboratoryPage() {
       {/* Stats */}
       <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: FlaskConical, label: isRTL ? 'کل آزمایش‌ها' : 'Total Tests', value: tests.length, color: 'text-blue-600' },
-          { icon: Clock, label: isRTL ? 'در انتظار' : 'Pending', value: pendingCount, color: 'text-amber-600' },
-          { icon: CheckCircle, label: isRTL ? 'تکمیل شده' : 'Completed', value: completedCount, color: 'text-emerald-600' },
-          { icon: AlertTriangle, label: isRTL ? 'امروز' : 'Today', value: tests.filter(t => { const d = new Date(t.testDate); const today = new Date(); return d.toDateString() === today.toDateString(); }).length, color: 'text-purple-600' },
+          { icon: FlaskConical, label: t('total_tests'), value: tests.length, color: 'text-blue-600' },
+          { icon: Clock, label: t('pending_tests'), value: pendingCount, color: 'text-amber-600' },
+          { icon: CheckCircle, label: t('completed_tests'), value: completedCount, color: 'text-emerald-600' },
+          { icon: AlertTriangle, label: t('today_tests'), value: tests.filter(t => { const d = new Date(t.testDate); const today = new Date(); return d.toDateString() === today.toDateString(); }).length, color: 'text-purple-600' },
         ].map((s, i) => (
           <Card key={i}><CardContent className="p-4"><div className="flex items-center gap-3"><s.icon className={`size-8 ${s.color} opacity-70`} /><div><p className="text-xs text-muted-foreground">{s.label}</p><p className="text-2xl font-bold">{s.value}</p></div></div></CardContent></Card>
         ))}
@@ -142,13 +154,13 @@ export function LaboratoryPage() {
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1"><Search className={`absolute top-2.5 size-4 text-muted-foreground ${isRTL ? 'right-3' : 'left-3'}`} /><Input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} className={isRTL ? 'pr-9' : 'pl-9'} /></div>
             <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent>{['all','pending','processing','completed'].map(s => <SelectItem key={s} value={s}>{s === 'all' ? t('all') : s}</SelectItem>)}</SelectContent></Select>
-            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setRequestOpen(true)}><Plus className="size-4" />{isRTL ? 'درخواست آزمایش' : 'Request Test'}</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setRequestOpen(true)}><Plus className="size-4" />{t('request_new_test')}</Button>
           </motion.div>
 
           <Card>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="border-b bg-muted/50"><th className="p-3 text-start font-medium">{t('patient')}</th><th className="p-3 text-start font-medium">{isRTL ? 'نام آزمایش' : 'Test Name'}</th><th className="p-3 text-start font-medium">{isRTL ? 'دسته' : 'Category'}</th><th className="p-3 text-start font-medium">{t('doctor')}</th><th className="p-3 text-start font-medium">{isRTL ? 'تاریخ' : 'Date'}</th><th className="p-3 text-start font-medium">{t('status')}</th><th className="p-3 text-start font-medium">{t('actions')}</th></tr></thead>
+                <thead><tr className="border-b bg-muted/50"><th className="p-3 text-start font-medium">{t('patient')}</th><th className="p-3 text-start font-medium">{t('test_name_label')}</th><th className="p-3 text-start font-medium">{t('category_label')}</th><th className="p-3 text-start font-medium">{t('doctor')}</th><th className="p-3 text-start font-medium">{t('test_date')}</th><th className="p-3 text-start font-medium">{t('status')}</th><th className="p-3 text-start font-medium">{t('actions')}</th></tr></thead>
                 <tbody>
                   {tests.map((test) => (
                     <tr key={test.id} className="border-b hover:bg-muted/30">
@@ -161,6 +173,7 @@ export function LaboratoryPage() {
                       <td className="p-3"><div className="flex gap-1">
                         {test.status === 'pending' && <Button size="sm" className="h-7 bg-blue-600 hover:bg-blue-700 text-xs" onClick={() => openResults(test)}><Edit className="size-3" />{isRTL ? 'ثبت نتیجه' : 'Results'}</Button>}
                         {test.status === 'completed' && <><Button size="icon" variant="ghost" className="size-7" onClick={() => { setSelectedTest(test); setViewOpen(true); }}><Eye className="size-3.5" /></Button><Button size="icon" variant="ghost" className="size-7" onClick={() => openResults(test)}><Printer className="size-3.5" /></Button></>}
+                        {test.status !== 'completed' && <Button size="icon" variant="ghost" className="size-7 text-destructive" onClick={() => { setDeleteTarget(test.id); setDeleteConfirmOpen(true); }}><Trash2 className="size-3.5" /></Button>}
                       </div></td>
                     </tr>
                   ))}
@@ -172,54 +185,65 @@ export function LaboratoryPage() {
         </div>
 
         {/* Chart */}
-        <Card className="h-fit"><CardHeader><CardTitle className="text-sm">{isRTL ? 'آزمایش‌ها بر اساس دسته' : 'Tests by Category'}</CardTitle></CardHeader><CardContent><div className="h-48"><ResponsiveContainer><BarChart data={catData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis /><Tooltip /><Bar dataKey="count" fill="#10b981" radius={[4,4,0,0]} /></BarChart></ResponsiveContainer></div></CardContent></Card>
+        <Card className="h-fit"><CardHeader><CardTitle className="text-sm">{t('tests_by_category')}</CardTitle></CardHeader><CardContent><div className="h-48"><ResponsiveContainer><BarChart data={catData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 11 }} /><YAxis /><Tooltip /><Bar dataKey="count" fill="#10b981" radius={[4,4,0,0]} /></BarChart></ResponsiveContainer></div></CardContent></Card>
       </div>
 
       {/* Request Dialog */}
       <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
-        <DialogContent className="max-w-md"><DialogHeader><DialogTitle>{isRTL ? 'درخواست آزمایش جدید' : 'Request New Lab Test'}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md"><DialogHeader><DialogTitle>{t('request_new_lab_test')}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
-            <div><Label>{t('patient')}</Label><Select value={form.patientId} onValueChange={v => setForm({ ...form, patientId: v })}><SelectTrigger><SelectValue placeholder={isRTL ? 'انتخاب بیمار' : 'Select patient'} /></SelectTrigger><SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>{t('doctor')}</Label><Select value={form.doctorId} onValueChange={v => setForm({ ...form, doctorId: v })}><SelectTrigger><SelectValue placeholder={isRTL ? 'انتخاب پزشک' : 'Select doctor'} /></SelectTrigger><SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName} - {d.specialty}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>{t('patient')}</Label><Select value={form.patientId} onValueChange={v => setForm({ ...form, patientId: v })}><SelectTrigger><SelectValue placeholder={t('select_patient')} /></SelectTrigger><SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>)}</SelectContent></Select></div>
+            <div><Label>{t('doctor')}</Label><Select value={form.doctorId} onValueChange={v => setForm({ ...form, doctorId: v })}><SelectTrigger><SelectValue placeholder={t('select_doctor_label')} /></SelectTrigger><SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName} - {d.specialty}</SelectItem>)}</SelectContent></Select></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>{isRTL ? 'نام آزمایش' : 'Test Name'}</Label><Input value={form.testName} onChange={e => setForm({ ...form, testName: e.target.value })} placeholder="CBC, Lipid Panel,..." /></div>
-              <div><Label>{isRTL ? 'دسته‌بندی' : 'Category'}</Label><Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['blood','urine','imaging','other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+              <div><Label>{t('test_name_label')}</Label><Input value={form.testName} onChange={e => setForm({ ...form, testName: e.target.value })} placeholder="CBC, Lipid Panel,..." /></div>
+              <div><Label>{t('category_label')}</Label><Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['blood','urine','imaging','other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
             </div>
-            <div><Label>{isRTL ? 'هزینه' : 'Cost'}</Label><Input type="number" value={form.cost} onChange={e => setForm({ ...form, cost: e.target.value })} /></div>
-            <Button onClick={handleRequest} className="w-full bg-emerald-600 hover:bg-emerald-700">{isRTL ? 'ثبت درخواست' : 'Submit Request'}</Button>
+            <div><Label>{t('cost')}</Label><Input type="number" value={form.cost} onChange={e => setForm({ ...form, cost: e.target.value })} /></div>
+            <Button onClick={handleRequest} className="w-full bg-emerald-600 hover:bg-emerald-700">{t('submit_request')}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Enter Results Dialog */}
       <Dialog open={resultsOpen} onOpenChange={setResultsOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto"><DialogHeader><DialogTitle>{isRTL ? 'ثبت نتایج آزمایش' : 'Enter Test Results'} - {selectedTest?.testName}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto"><DialogHeader><DialogTitle>{t('enter_test_results')} - {selectedTest?.testName}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">{selectedTest?.patient ? `${selectedTest.patient.firstName} ${selectedTest.patient.lastName}` : ''}</p>
             <div className="space-y-2">
               {resultRows.map((row, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-3"><Label className="text-xs">{isRTL ? 'نام' : 'Name'}</Label><Input value={row.name} onChange={e => updateResultRow(i, 'name', e.target.value)} /></div>
-                  <div className="col-span-2"><Label className="text-xs">{isRTL ? 'مقدار' : 'Value'}</Label><Input value={row.value} onChange={e => updateResultRow(i, 'value', e.target.value)} /></div>
-                  <div className="col-span-2"><Label className="text-xs">{isRTL ? 'واحد' : 'Unit'}</Label><Input value={row.unit} onChange={e => updateResultRow(i, 'unit', e.target.value)} /></div>
-                  <div className="col-span-2"><Label className="text-xs">{isRTL ? 'حد نرمال' : 'Normal'}</Label><div className="flex gap-1"><Input placeholder={isRTL ? 'کم' : 'Min'} value={row.normalMin} onChange={e => updateResultRow(i, 'normalMin', e.target.value)} /><Input placeholder={isRTL ? 'زیاد' : 'Max'} value={row.normalMax} onChange={e => updateResultRow(i, 'normalMax', e.target.value)} /></div></div>
-                  <div className="col-span-2"><Label className="text-xs">{isRTL ? 'وضعیت' : 'Status'}</Label><span className={`inline-block px-2 py-1.5 rounded text-xs font-medium ${getStatusColor(row.status)}`}>{row.status}</span></div>
+                  <div className="col-span-3"><Label className="text-xs">{t('name_label')}</Label><Input value={row.name} onChange={e => updateResultRow(i, 'name', e.target.value)} /></div>
+                  <div className="col-span-2"><Label className="text-xs">{t('value_label')}</Label><Input value={row.value} onChange={e => updateResultRow(i, 'value', e.target.value)} /></div>
+                  <div className="col-span-2"><Label className="text-xs">{t('unit_label')}</Label><Input value={row.unit} onChange={e => updateResultRow(i, 'unit', e.target.value)} /></div>
+                  <div className="col-span-2"><Label className="text-xs">{t('normal_range')}</Label><div className="flex gap-1"><Input placeholder={isRTL ? 'کم' : 'Min'} value={row.normalMin} onChange={e => updateResultRow(i, 'normalMin', e.target.value)} /><Input placeholder={isRTL ? 'زیاد' : 'Max'} value={row.normalMax} onChange={e => updateResultRow(i, 'normalMax', e.target.value)} /></div></div>
+                  <div className="col-span-2"><Label className="text-xs">{t('status_label')}</Label><span className={`inline-block px-2 py-1.5 rounded text-xs font-medium ${getStatusColor(row.status)}`}>{row.status}</span></div>
                   <div className="col-span-1 flex items-end"><Button size="icon" variant="ghost" className="size-9 text-destructive" onClick={() => setResultRows(resultRows.filter((_, idx) => idx !== i))}><Trash2 className="size-4" /></Button></div>
                 </div>
               ))}
-              <Button variant="outline" size="sm" onClick={addResultRow}><Plus className="size-3" />{isRTL ? 'افزودن ردیف' : 'Add Row'}</Button>
+              <Button variant="outline" size="sm" onClick={addResultRow}><Plus className="size-3" />{t('add_row')}</Button>
             </div>
             <Button onClick={saveResults} className="w-full bg-emerald-600 hover:bg-emerald-700">{t('save')}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirm Dialog */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onClose={() => { setDeleteConfirmOpen(false); setDeleteTarget(null); }}
+        onConfirm={handleDeleteTest}
+        title={t('delete')}
+        description={t('are_you_sure_delete')}
+        confirmLabel={t('delete')}
+        variant="danger"
+      />
+
       {/* View Results Dialog */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{selectedTest?.testName}</DialogTitle></DialogHeader>
           {selectedTest && selectedTest.results && (<>
             <div className="text-sm text-muted-foreground mb-3">{selectedTest.patient?.firstName} {selectedTest.patient?.lastName} | {new Date(selectedTest.testDate).toLocaleDateString()}</div>
-            <table className="w-full border text-sm"><thead><tr className="bg-muted"><th className="border p-2">{isRTL ? 'نام' : 'Name'}</th><th className="border p-2">{isRTL ? 'مقدار' : 'Value'}</th><th className="border p-2">{isRTL ? 'واحد' : 'Unit'}</th><th className="border p-2">{isRTL ? 'محدوده نرمال' : 'Normal Range'}</th><th className="border p-2">{isRTL ? 'وضعیت' : 'Status'}</th></tr></thead>
+            <table className="w-full border text-sm"><thead><tr className="bg-muted"><th className="border p-2">{t('name_label')}</th><th className="border p-2">{t('value_label')}</th><th className="border p-2">{t('unit_label')}</th><th className="border p-2">{t('normal_range')}</th><th className="border p-2">{t('status_label')}</th></tr></thead>
               <tbody>{JSON.parse(selectedTest.results).map((r: ResultRow, i: number) => (<tr key={i}><td className="border p-2">{r.name}</td><td className="border p-2 font-medium">{r.value}</td><td className="border p-2">{r.unit}</td><td className="border p-2">{r.normalMin}-{r.normalMax}</td><td className="border p-2"><span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(r.status)}`}>{r.status}</span></td></tr>))}</tbody>
             </table>
             <Button className="w-full mt-3" onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(`<html><head><title>${selectedTest.testName}</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #ddd;padding:6px;text-align:left}th{background:#f0fdf4}.normal{color:green}.borderline{color:orange}.high{color:red}</style></head><body><h1>${selectedTest.testName}</h1><p>Patient: ${selectedTest.patient?.firstName} ${selectedTest.patient?.lastName}</p><p>Date: ${new Date(selectedTest.testDate).toLocaleDateString()}</p><table><thead><tr><th>Name</th><th>Value</th><th>Unit</th><th>Normal Range</th><th>Status</th></tr></thead><tbody>${JSON.parse(selectedTest.results).map((r: ResultRow) => `<tr><td>${r.name}</td><td>${r.value}</td><td>${r.unit}</td><td>${r.normalMin}-${r.normalMax}</td><td class="${r.status}">${r.status}</td></tr>`).join('')}</tbody></table></body></html>`); w.document.close(); w.print(); }}}><Printer className="size-4" />{t('print')}</Button>

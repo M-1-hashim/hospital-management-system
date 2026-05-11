@@ -268,7 +268,7 @@ export function StaffPage() {
           className="bg-emerald-600 text-white hover:bg-emerald-700"
         >
           <Plus className="size-4" />
-          <span className="ms-2">{isRTL ? 'افزودن کارمند' : 'Add Staff'}</span>
+          <span className="ms-2">{t('add_staff')}</span>
         </Button>
       </div>
 
@@ -303,8 +303,8 @@ export function StaffPage() {
         <EmptyState
           icon={Users}
           title={t('no_data')}
-          description={isRTL ? 'کارمندی یافت نشد' : 'No staff members found'}
-          actionLabel={isRTL ? 'افزودن کارمند' : 'Add Staff'}
+          description={t('no_staff_found')}
+          actionLabel={t('add_staff')}
           onAction={openAddDialog}
         />
       ) : (
@@ -317,7 +317,7 @@ export function StaffPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead>{isRTL ? 'نام' : 'Name'}</TableHead>
+                <TableHead>{t('full_name')}</TableHead>
                 <TableHead>{t('role')}</TableHead>
                 <TableHead>{t('departments')}</TableHead>
                 <TableHead>{t('phone')}</TableHead>
@@ -404,20 +404,20 @@ export function StaffPage() {
         <DialogContent className="max-w-md" dir={isRTL ? 'rtl' : 'ltr'}>
           <DialogHeader>
             <DialogTitle>
-              {editingStaff ? t('edit') : isRTL ? 'افزودن کارمند' : 'Add Staff'}
+              {editingStaff ? t('edit') : t('add_staff')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{isRTL ? 'نام' : 'First Name'}</Label>
+                <Label>{t('first_name')}</Label>
                 <Input
                   value={form.firstName}
                   onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>{isRTL ? 'نام خانوادگی' : 'Last Name'}</Label>
+                <Label>{t('last_name')}</Label>
                 <Input
                   value={form.lastName}
                   onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
@@ -481,9 +481,9 @@ export function StaffPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="morning">{isRTL ? 'صبح' : 'Morning'}</SelectItem>
-                    <SelectItem value="evening">{isRTL ? 'عصر' : 'Evening'}</SelectItem>
-                    <SelectItem value="night">{isRTL ? 'شب' : 'Night'}</SelectItem>
+                    <SelectItem value="morning">{t('shift_morning')}</SelectItem>
+                    <SelectItem value="evening">{t('shift_evening')}</SelectItem>
+                    <SelectItem value="night">{t('shift_night')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -596,31 +596,31 @@ export function StaffPage() {
                 {/* Attendance Summary */}
                 <div className="rounded-lg border bg-muted/30 p-4">
                   <h4 className="text-sm font-semibold text-muted-foreground mb-2">
-                    {t('attendance')} {isRTL ? 'خلاصه' : 'Summary'}
+                    {t('attendance')} {t('attendance_summary')}
                   </h4>
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div>
                       <p className="text-2xl font-bold text-emerald-600">
-                        {Math.floor(Math.random() * 20) + 10}
+                        15
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {isRTL ? 'حاضر' : 'Present'}
+                        {t('present')}
                       </p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-amber-600">
-                        {Math.floor(Math.random() * 3)}
+                        1
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {isRTL ? 'غایب' : 'Absent'}
+                        {t('absent')}
                       </p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-sky-600">
-                        {Math.floor(Math.random() * 2)}
+                        0
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {isRTL ? 'مرخصی' : 'Leave'}
+                        {t('leave')}
                       </p>
                     </div>
                   </div>
@@ -652,8 +652,8 @@ export function StaffPage() {
         open={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
         onConfirm={handleDelete}
-        title={isRTL ? 'حذف کارمند' : 'Delete Staff'}
-        description={isRTL ? 'آیا مطمئن هستید؟ این عمل قابل بازگشت نیست.' : 'Are you sure? This action cannot be undone.'}
+        title={t('delete_staff')}
+        description={t('delete_staff_confirm')}
         variant="danger"
         confirmLabel={t('delete')}
         loading={submitting}

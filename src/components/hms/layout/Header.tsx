@@ -54,8 +54,8 @@ export function Header({ onMenuClick, onSearchClick }: HeaderProps) {
         <DropdownMenuContent align={isRTL ? 'start' : 'end'} className="w-44">
           <DropdownMenuLabel>{user?.fullName}</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem><User className="me-2 size-3.5" />{t('profile')}</DropdownMenuItem>
-          <DropdownMenuItem><Settings className="me-2 size-3.5" />{t('settings')}</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => useNavStore.getState().setCurrentPage('settings')}><User className="me-2 size-3.5" />{t('profile')}</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => useNavStore.getState().setCurrentPage('settings')}><Settings className="me-2 size-3.5" />{t('settings')}</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout} className="text-red-600 focus:bg-red-50 focus:text-red-700"><LogOut className="me-2 size-3.5" />{t('logout')}</DropdownMenuItem>
         </DropdownMenuContent>

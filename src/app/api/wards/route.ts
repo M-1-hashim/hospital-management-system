@@ -108,6 +108,51 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// DELETE /api/wards?id=xxx - Delete a bed
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Bed ID required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if bed has active admissions
+    const bed = await db.bed.findUnique({
+      where: { id },
+      include: { admissions: { where: { status: 'active' } } },
+    });
+
+    if (!bed) {
+      return NextResponse.json(
+        { error: 'Bed not found' },
+        { status: 404 }
+      );
+    }
+
+    if (bed.admissions.length > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete bed with active admissions' },
+        { status: 400 }
+      );
+    }
+
+    await db.bed.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Wards DELETE error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete bed' },
+      { status: 500 }
+    );
+  }
+}
+
 // Add new bed
 async function addBed(request: NextRequest) {
   const body = await request.json();

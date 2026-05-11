@@ -31,34 +31,68 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT /api/settings - Update setting
+// PUT /api/settings - Update one or many settings
+// Supports two modes:
+//   Individual: { key: "some_key", value: "some_value" }
+//   Bulk:       { hospital_name: "...", hospital_phone: "...", ... }
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
 
-    if (!body.key) {
+    if (!body || typeof body !== 'object') {
       return NextResponse.json(
-        { error: 'Setting key is required' },
+        { error: 'Request body must be a non-null object' },
         { status: 400 }
       );
     }
 
-    const setting = await db.hospitalSetting.upsert({
-      where: { key: body.key },
-      create: {
-        key: body.key,
-        value: body.value || '',
-      },
-      update: {
-        value: body.value || '',
-      },
-    });
+    // Individual save mode: body has explicit `key` and `value` fields
+    if ('key' in body && 'value' in body) {
+      if (!body.key) {
+        return NextResponse.json(
+          { error: 'Setting key is required' },
+          { status: 400 }
+        );
+      }
 
-    return NextResponse.json({ setting });
+      const setting = await db.hospitalSetting.upsert({
+        where: { key: body.key },
+        create: {
+          key: body.key,
+          value: body.value ?? '',
+        },
+        update: {
+          value: body.value ?? '',
+        },
+      });
+
+      return NextResponse.json({ setting });
+    }
+
+    // Bulk save mode: treat every key in the body as a setting
+    const keys = Object.keys(body);
+    if (keys.length === 0) {
+      return NextResponse.json(
+        { error: 'No settings provided' },
+        { status: 400 }
+      );
+    }
+
+    const results = await Promise.all(
+      keys.map((key) =>
+        db.hospitalSetting.upsert({
+          where: { key },
+          create: { key, value: body[key] ?? '' },
+          update: { value: body[key] ?? '' },
+        })
+      )
+    );
+
+    return NextResponse.json({ settings: results, count: results.length });
   } catch (error) {
     console.error('Settings PUT error:', error);
     return NextResponse.json(
-      { error: 'Failed to update setting' },
+      { error: 'Failed to update settings' },
       { status: 500 }
     );
   }
