@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 import { useAuthStore, useLanguageStore, useNavStore, useThemeStore } from '@/store';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -22,17 +21,7 @@ import { SettingsPage } from '@/components/hms/pages/SettingsPage';
 import { Toaster } from 'sonner';
 
 const PAGE_MAP: Record<string, React.ComponentType> = {
-  dashboard: DashboardPage,
-  patients: PatientsPage,
-  doctors: DoctorsPage,
-  appointments: AppointmentsPage,
-  billing: BillingPage,
-  pharmacy: PharmacyPage,
-  laboratory: LaboratoryPage,
-  wards: WardsPage,
-  staff: StaffPage,
-  reports: ReportsPage,
-  settings: SettingsPage,
+  dashboard: DashboardPage, patients: PatientsPage, doctors: DoctorsPage, appointments: AppointmentsPage, billing: BillingPage, pharmacy: PharmacyPage, laboratory: LaboratoryPage, wards: WardsPage, staff: StaffPage, reports: ReportsPage, settings: SettingsPage,
 };
 
 export function AppLayout() {
@@ -40,51 +29,23 @@ export function AppLayout() {
   const { isRTL } = useLanguageStore();
   const { currentPage } = useNavStore();
   const { theme } = useThemeStore();
-
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Apply theme
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
+  useEffect(() => { document.documentElement.classList.toggle('dark', theme === 'dark'); }, [theme]);
+  const handleKeyDown = useCallback((e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 'k' && isAuthenticated) { e.preventDefault(); setSearchOpen(prev => !prev); } }, [isAuthenticated]);
+  useEffect(() => { document.addEventListener('keydown', handleKeyDown); return () => document.removeEventListener('keydown', handleKeyDown); }, [handleKeyDown]);
 
-  // Cmd+K / Ctrl+K shortcut for search
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && isAuthenticated) {
-        e.preventDefault();
-        setSearchOpen((prev) => !prev);
-      }
-    },
-    [isAuthenticated]
-  );
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
-  // Not authenticated – show login
-  if (!isAuthenticated) {
-    return <LoginPage />;
-  }
-
+  if (!isAuthenticated) return <LoginPage />;
   const PageComponent = PAGE_MAP[currentPage] || DashboardPage;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950" dir={isRTL ? 'rtl' : 'ltr'}>
-      <Sidebar
-        mobileOpen={mobileSidebarOpen}
-        onMobileClose={() => setMobileSidebarOpen(false)}
-      />
+    <div className="flex h-screen bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
+      <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          onMenuClick={() => setMobileSidebarOpen(true)}
-          onSearchClick={() => setSearchOpen(true)}
-        />
+        <Header onMenuClick={() => setMobileSidebarOpen(true)} onSearchClick={() => setSearchOpen(true)} />
         <ScrollArea className="flex-1">
-          <main className="mx-auto w-full max-w-[1600px] p-4 sm:p-6">
+          <main className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8">
             <PageComponent />
           </main>
         </ScrollArea>

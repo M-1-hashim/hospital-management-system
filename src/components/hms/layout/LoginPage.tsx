@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Heart, Eye, EyeOff, Loader2, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore, useLanguageStore, useNavStore, useThemeStore } from '@/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Globe, Sun, Moon } from 'lucide-react';
 
 export function LoginPage() {
@@ -28,228 +27,99 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!username.trim() || !password.trim()) {
-      setError(t('invalid_credentials'));
-      return;
-    }
-
+    if (!username.trim() || !password.trim()) { setError(t('invalid_credentials')); return; }
     setIsLoading(true);
-    try {
-      await login(username, password);
-      setCurrentPage('dashboard');
-    } catch {
-      setError(t('invalid_credentials'));
-    } finally {
-      setIsLoading(false);
-    }
+    try { await login(username, password); setCurrentPage('dashboard'); } catch { setError(t('invalid_credentials')); } finally { setIsLoading(false); }
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700">
-      {/* Background Decorative Elements */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -start-40 size-80 rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute -bottom-40 -end-40 size-80 rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute top-1/2 start-1/2 size-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/5 blur-3xl" />
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
-        />
-      </div>
-
-      {/* Language & Theme Controls */}
-      <div
-        className={cn(
-          'absolute top-4 flex items-center gap-2',
-          isRTL ? 'left-4' : 'right-4'
-        )}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setLocale(locale === 'en' ? 'fa' : 'en')}
-          className="text-white/80 hover:bg-white/10 hover:text-white"
-          aria-label={t('language')}
-        >
-          <Globe className="size-5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          className="text-white/80 hover:bg-white/10 hover:text-white"
-          aria-label={t('theme')}
-        >
-          {theme === 'light' ? (
-            <Moon className="size-5" />
-          ) : (
-            <Sun className="size-5" />
-          )}
-        </Button>
-      </div>
-
-      {/* Login Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-md px-4"
-        dir={isRTL ? 'rtl' : 'ltr'}
-      >
-        <Card className="border-0 bg-white/95 shadow-2xl backdrop-blur-xl dark:bg-gray-900/95">
-          <CardHeader className="flex flex-col items-center gap-4 pb-2 text-center">
-            {/* Logo */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-              className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25"
-            >
-              <Plus className="size-8 text-white" strokeWidth={3} />
-            </motion.div>
-
-            <div>
-              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-                {t('dashboard').split(' ').slice(0, 1)[0]}
-              </CardTitle>
-              <CardDescription className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {t('welcome_back')}
-              </CardDescription>
+    <div className="flex min-h-screen" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Left Panel - Branding */}
+      <div className="relative hidden w-1/2 overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 lg:flex lg:flex-col lg:items-center lg:justify-center">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-20 start-20 size-72 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute bottom-20 end-20 size-96 rounded-full bg-cyan-400/10 blur-3xl" />
+          <div className="absolute top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Activity className="size-[200px] text-white/[0.06]" strokeWidth={0.5} />
+          </div>
+        </div>
+        <div className="relative z-10 max-w-md px-8 text-center">
+          <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 150 }}>
+            <div className="mx-auto mb-8 flex size-20 items-center justify-center rounded-3xl bg-white/15 shadow-2xl backdrop-blur-sm ring-1 ring-white/20">
+              <Heart className="size-10 text-white" fill="white" fillOpacity={0.9} />
             </div>
-          </CardHeader>
+          </motion.div>
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="text-4xl font-bold leading-tight text-white">
+            {isRTL ? 'سیستم مدیریت بیمارستان' : 'Hospital Management'}
+          </motion.h1>
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-4 text-lg text-emerald-100/80">
+            {isRTL ? 'پلتفرم جامع مدیریت بهداشت و درمان' : 'Comprehensive Healthcare Platform'}
+          </motion.p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-10 flex justify-center gap-8 text-emerald-100/60">
+            {[{ num: '۲۰+', label: isRTL ? 'بخش' : 'Modules' }, { num: '۹۹٪', label: isRTL ? 'آپتایم' : 'Uptime' }, { num: '۲۴/۷', label: isRTL ? 'پشتیبانی' : 'Support' }].map((s, i) => (
+              <div key={i} className="text-center"><p className="text-2xl font-bold text-white">{s.num}</p><p className="text-xs mt-0.5">{s.label}</p></div>
+            ))}
+          </motion.div>
+        </div>
+      </div>
 
-          <CardContent className="pt-4">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Username */}
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="username" className="text-sm font-medium">
-                  {t('username')}
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder={t('username')}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="h-11"
-                  autoComplete="username"
-                  disabled={isLoading}
-                />
+      {/* Right Panel - Login Form */}
+      <div className="flex w-full items-center justify-center px-6 py-12 lg:w-1/2">
+        <div className="w-full max-w-sm">
+          {/* Language & Theme */}
+          <div className={cn('absolute top-4 flex items-center gap-2 z-50', isRTL ? 'left-4' : 'right-4')}>
+            <Button variant="ghost" size="icon" onClick={() => setLocale(locale === 'en' ? 'fa' : 'en')} className="text-muted-foreground hover:text-foreground"><Globe className="size-5" /></Button>
+            <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground">{theme === 'light' ? <Moon className="size-5" /> : <Sun className="size-5" />}</Button>
+          </div>
+
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
+            {/* Logo for mobile */}
+            <div className="mb-8 flex items-center gap-3 lg:hidden">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600">
+                <Heart className="size-5 text-white" fill="white" fillOpacity={0.9} />
               </div>
+              <span className="text-lg font-bold">{isRTL ? 'بیمارستان' : 'HMS'}</span>
+            </div>
 
-              {/* Password */}
+            <h2 className="text-2xl font-bold tracking-tight">{t('welcome_back')}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{isRTL ? 'برای ادامه وارد شوید' : 'Sign in to your account'}</p>
+
+            <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  {t('password')}
-                </Label>
+                <Label className="text-sm font-medium">{t('username')}</Label>
+                <Input type="text" placeholder={t('username')} value={username} onChange={(e) => setUsername(e.target.value)} className="h-12 rounded-xl" disabled={isLoading} />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm font-medium">{t('password')}</Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder={t('password')}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 pe-10"
-                    autoComplete="current-password"
-                    disabled={isLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute end-0 top-0 size-11 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
+                  <Input type={showPassword ? 'text' : 'password'} placeholder={t('password')} value={password} onChange={(e) => setPassword(e.target.value)} className="h-12 rounded-xl pe-12" disabled={isLoading} />
+                  <Button type="button" variant="ghost" size="icon" className="absolute end-2 top-1/2 -translate-y-1/2 size-8 text-muted-foreground hover:text-foreground" onClick={() => setShowPassword(!showPassword)} tabIndex={-1}>
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </Button>
                 </div>
               </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div
-                className={cn(
-                  'flex items-center justify-between',
-                  isRTL && 'flex-row-reverse'
-                )}
-              >
-                <div
-                  className={cn(
-                    'flex items-center gap-2',
-                    isRTL && 'flex-row-reverse'
-                  )}
-                >
-                  <Checkbox
-                    id="remember"
-                    checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked === true)}
-                    disabled={isLoading}
-                  />
-                  <Label
-                    htmlFor="remember"
-                    className="cursor-pointer text-sm text-muted-foreground"
-                  >
-                    {t('remember_me')}
-                  </Label>
+              <div className={cn('flex items-center justify-between', isRTL && 'flex-row-reverse')}>
+                <div className={cn('flex items-center gap-2', isRTL && 'flex-row-reverse')}>
+                  <Checkbox id="remember" checked={rememberMe} onCheckedChange={(c) => setRememberMe(c === true)} disabled={isLoading} />
+                  <Label htmlFor="remember" className="cursor-pointer text-sm text-muted-foreground">{t('remember_me')}</Label>
                 </div>
-                <button
-                  type="button"
-                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-                  tabIndex={-1}
-                >
-                  {t('forgot_password')}
-                </button>
+                <button type="button" className="text-sm font-medium text-primary hover:underline" tabIndex={-1}>{t('forgot_password')}</button>
               </div>
 
-              {/* Error Message */}
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400"
-                >
-                  {error}
-                </motion.div>
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-400">{error}</motion.div>
               )}
 
-              {/* Login Button */}
-              <Button
-                type="submit"
-                className="mt-1 h-11 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/25 hover:from-emerald-700 hover:to-teal-700"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    <span>{t('loading')}</span>
-                  </>
-                ) : (
-                  <span className="font-semibold">{t('login')}</span>
-                )}
+              <Button type="submit" className="h-12 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30" disabled={isLoading}>
+                {isLoading ? <><Loader2 className="size-4 animate-spin" /><span className="ms-2">{t('loading')}</span></> : t('login')}
               </Button>
 
-              {/* Demo Credentials Hint */}
-              <p className="text-center text-xs text-muted-foreground">
-                {isRTL
-                  ? 'نسخه آزمایشی: admin / admin'
-                  : 'Demo: admin / admin'}
-              </p>
+              <p className="text-center text-xs text-muted-foreground">{isRTL ? 'نسخه آزمایشی: admin / admin123' : 'Demo: admin / admin123'}</p>
             </form>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

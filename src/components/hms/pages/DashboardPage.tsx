@@ -210,7 +210,7 @@ function AlertCard({
     <motion.div
       variants={itemVariants}
       custom={index}
-      className={cn('rounded-xl border-l-4 bg-card p-4 shadow-sm', borderColor)}
+      className={cn('rounded-2xl bg-card p-4 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]', borderColor)}
     >
       <div className="flex items-start gap-3">
         <div
@@ -452,130 +452,22 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Daily Visits Line Chart */}
         <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-                  <Users className="size-4 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                {t('daily_visits')}
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  {t('weekly_income')}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <div className="h-[260px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={dailyVisits}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="hsl(var(--border))"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={30}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Line
-                      type="monotone"
-                      dataKey="visits"
-                      stroke="#10b981"
-                      strokeWidth={2.5}
-                      dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }}
-                      activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
-                      name="Visits"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Patient Distribution PieChart */}
-        <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/50">
-                  <Stethoscope className="size-4 text-teal-600 dark:text-teal-400" />
-                </div>
-                {t('patient_by_dept')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <div className="h-[260px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={departmentData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={90}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {departmentData.map((_, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={PIE_COLORS[index % PIE_COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend
-                      verticalAlign="bottom"
-                      iconType="circle"
-                      iconSize={8}
-                      formatter={(value: string) => (
-                        <span className="text-xs text-muted-foreground">{value}</span>
-                      )}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* ── Charts Row 2: Monthly Revenue BarChart ─────────── */}
-      <motion.div variants={itemVariants}>
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-                <DollarSign className="size-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              {t('monthly_revenue')}
-              <Badge variant="secondary" className="ml-auto text-xs">
-                {t('monthly_income')}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <div className="h-[280px] w-full">
+          <div className="rounded-2xl bg-card p-5 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm"><Users className="size-4 text-white" /></div>
+              <h3 className="text-sm font-semibold">{t('daily_visits')}</h3>
+              <Badge variant="secondary" className="ms-auto text-[11px]">{t('weekly_income')}</Badge>
+            </div>
+            <div className="h-[260px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyRevenueData} barCategoryGap="20%">
+                <LineChart data={dailyVisits}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="hsl(var(--border))"
                     vertical={false}
                   />
                   <XAxis
-                    dataKey="month"
+                    dataKey="day"
                     tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                     axisLine={false}
                     tickLine={false}
@@ -585,175 +477,259 @@ export default function DashboardPage() {
                     axisLine={false}
                     tickLine={false}
                     width={30}
-                    tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
                   />
-                  <Tooltip
-                    content={
-                      <CustomTooltip valueFormatter={(v: number) => formatCurrency(v)} />
-                    }
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="visits"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                    name="Visits"
                   />
-                  <Bar
-                    dataKey="revenue"
-                    radius={[6, 6, 0, 0]}
-                    name="Revenue"
-                  >
-                    {monthlyRevenueData.map((_, index) => (
-                      <Cell
-                        key={`bar-${index}`}
-                        fill={BAR_COLORS[index % BAR_COLORS.length]}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
+                </LineChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </motion.div>
+
+        {/* Patient Distribution PieChart */}
+        <motion.div variants={itemVariants}>
+          <div className="rounded-2xl bg-card p-5 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/50">
+                <Stethoscope className="size-4 text-teal-600 dark:text-teal-400" />
+              </div>
+              <h3 className="text-sm font-semibold">{t('patient_by_dept')}</h3>
+            </div>
+            <div className="h-[260px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={departmentData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {departmentData.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value: string) => (
+                      <span className="text-xs text-muted-foreground">{value}</span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ── Charts Row 2: Monthly Revenue BarChart ─────────── */}
+      <motion.div variants={itemVariants}>
+        <div className="rounded-2xl bg-card p-5 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+              <DollarSign className="size-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <h3 className="text-sm font-semibold">{t('monthly_revenue')}</h3>
+            <Badge variant="secondary" className="ml-auto text-xs">
+              {t('monthly_income')}
+            </Badge>
+          </div>
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyRevenueData} barCategoryGap="20%">
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={30}
+                  tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  content={
+                    <CustomTooltip valueFormatter={(v: number) => formatCurrency(v)} />
+                  }
+                />
+                <Bar
+                  dataKey="revenue"
+                  radius={[6, 6, 0, 0]}
+                  name="Revenue"
+                >
+                  {monthlyRevenueData.map((_, index) => (
+                    <Cell
+                      key={`bar-${index}`}
+                      fill={BAR_COLORS[index % BAR_COLORS.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </motion.div>
 
       {/* ── Bottom Row: Recent Patients + Today's Appointments */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Patients Table */}
         <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-base">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-                    <UserCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  {t('recent_patients')}
+          <div className="rounded-2xl bg-card p-5 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                  <UserCircle className="size-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  {recentPatients.length} {t('patients').toLowerCase()}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {recentPatients.length > 0 ? (
-                <ScrollArea className="max-h-[320px]">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
-                      <tr className="border-b">
-                        <th className="px-4 py-2.5 text-start font-medium text-muted-foreground">
-                          {t('name')}
-                        </th>
-                        <th className="px-4 py-2.5 text-start font-medium text-muted-foreground">
-                          {t('status')}
-                        </th>
-                        <th className="hidden px-4 py-2.5 text-start font-medium text-muted-foreground sm:table-cell">
-                          {t('date')}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentPatients.map((patient, idx) => (
-                        <tr
-                          key={patient.id}
-                          className={cn(
-                            'border-b transition-colors hover:bg-muted/50',
-                            idx === recentPatients.length - 1 && 'border-b-0'
-                          )}
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <Avatar className="size-8">
-                                <AvatarFallback className="bg-emerald-100 text-xs font-medium text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                                  {patient.fullName
-                                    ?.split(' ')
-                                    .map((n: string) => n[0])
-                                    .join('')
-                                    .toUpperCase()
-                                    .slice(0, 2) ?? '??'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0">
-                                <p className="truncate font-medium text-foreground">
-                                  {patient.fullName}
-                                </p>
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {patient.type}
-                                </p>
-                              </div>
+                <h3 className="text-sm font-semibold">{t('recent_patients')}</h3>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {recentPatients.length} {t('patients').toLowerCase()}
+              </Badge>
+            </div>
+            {recentPatients.length > 0 ? (
+              <ScrollArea className="max-h-[320px]">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                    <tr className="border-b">
+                      <th className="px-4 py-2.5 text-start font-medium text-muted-foreground">
+                        {t('name')}
+                      </th>
+                      <th className="px-4 py-2.5 text-start font-medium text-muted-foreground">
+                        {t('status')}
+                      </th>
+                      <th className="hidden px-4 py-2.5 text-start font-medium text-muted-foreground sm:table-cell">
+                        {t('date')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentPatients.map((patient, idx) => (
+                      <tr
+                        key={patient.id}
+                        className={cn(
+                          'border-b transition-colors hover:bg-muted/50',
+                          idx === recentPatients.length - 1 && 'border-b-0'
+                        )}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar className="size-8">
+                              <AvatarFallback className="bg-emerald-100 text-xs font-medium text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                {patient.fullName
+                                  ?.split(' ')
+                                  .map((n: string) => n[0])
+                                  .join('')
+                                  .toUpperCase()
+                                  .slice(0, 2) ?? '??'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-foreground">
+                                {patient.fullName}
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {patient.type}
+                              </p>
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <StatusBadge status={patient.status} />
-                          </td>
-                          <td className="hidden px-4 py-3 text-xs text-muted-foreground sm:table-cell">
-                            {patient.createdAt
-                              ? new Date(patient.createdAt).toLocaleDateString()
-                              : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </ScrollArea>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <UserCircle className="mb-2 size-10 opacity-40" />
-                  <p className="text-sm">{t('no_data')}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={patient.status} />
+                        </td>
+                        <td className="hidden px-4 py-3 text-xs text-muted-foreground sm:table-cell">
+                          {patient.createdAt
+                            ? new Date(patient.createdAt).toLocaleDateString()
+                            : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <UserCircle className="mb-2 size-10 opacity-40" />
+                <p className="text-sm">{t('no_data')}</p>
+              </div>
+            )}
+          </div>
         </motion.div>
 
         {/* Today's Appointments */}
         <motion.div variants={itemVariants}>
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-base">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/50">
-                    <Clock className="size-4 text-teal-600 dark:text-teal-400" />
-                  </div>
-                  {t('today_appointments')}
+          <div className="rounded-2xl bg-card p-5 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/50">
+                  <Clock className="size-4 text-teal-600 dark:text-teal-400" />
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  {todayAppointments.length} {t('appointments').toLowerCase()}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {todayAppointments.length > 0 ? (
-                <ScrollArea className="max-h-[320px]">
-                  <div className="divide-y">
-                    {todayAppointments.map((appt, idx) => (
-                      <div
-                        key={appt.id}
-                        className={cn(
-                          'flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/50',
-                          idx === todayAppointments.length - 1 && 'border-b-0'
-                        )}
-                      >
-                        <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg bg-muted">
-                          <span className="text-xs font-bold leading-tight text-foreground">
-                            {appt.time || '--:--'}
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground">
-                            {appt.patientName}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {t('doctor')}: {appt.doctorName}
-                          </p>
-                        </div>
-                        <StatusBadge status={appt.status} />
+                <h3 className="text-sm font-semibold">{t('today_appointments')}</h3>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {todayAppointments.length} {t('appointments').toLowerCase()}
+              </Badge>
+            </div>
+            {todayAppointments.length > 0 ? (
+              <ScrollArea className="max-h-[320px]">
+                <div className="divide-y">
+                  {todayAppointments.map((appt, idx) => (
+                    <div
+                      key={appt.id}
+                      className={cn(
+                        'flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-muted/50',
+                        idx === todayAppointments.length - 1 && 'border-b-0'
+                      )}
+                    >
+                      <div className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg bg-muted">
+                        <span className="text-xs font-bold leading-tight text-foreground">
+                          {appt.time || '--:--'}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <Clock className="mb-2 size-10 opacity-40" />
-                  <p className="text-sm">{t('no_data')}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">
+                          {appt.patientName}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {t('doctor')}: {appt.doctorName}
+                        </p>
+                      </div>
+                      <StatusBadge status={appt.status} />
+                    </div>
+                  ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </ScrollArea>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Clock className="mb-2 size-10 opacity-40" />
+                <p className="text-sm">{t('no_data')}</p>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
 
