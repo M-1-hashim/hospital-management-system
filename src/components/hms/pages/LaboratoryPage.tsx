@@ -50,9 +50,18 @@ export function LaboratoryPage() {
         fetch('/api/patients?limit=50').then(r => r.json()),
         fetch('/api/doctors').then(r => r.json()),
       ]);
-      if (testRes.status === 'fulfilled' && testRes.value) setTests(testRes.value.data || testRes.value);
-      if (patRes.status === 'fulfilled' && patRes.value) setPatients(patRes.value.data || patRes.value);
-      if (docRes.status === 'fulfilled' && docRes.value) setDoctors(docRes.value.data || docRes.value);
+      if (testRes.status === 'fulfilled' && testRes.value) {
+        const t = testRes.value;
+        setTests(Array.isArray(t.labTests) ? t.labTests : (Array.isArray(t.data) ? t.data : (Array.isArray(t) ? t : [])));
+      }
+      if (patRes.status === 'fulfilled' && patRes.value) {
+        const p = patRes.value;
+        setPatients(Array.isArray(p.patients) ? p.patients : (Array.isArray(p.data) ? p.data : (Array.isArray(p) ? p : [])));
+      }
+      if (docRes.status === 'fulfilled' && docRes.value) {
+        const d = docRes.value;
+        setDoctors(Array.isArray(d.doctors) ? d.doctors : (Array.isArray(d.data) ? d.data : (Array.isArray(d) ? d : [])));
+      }
     } catch {}
     finally { setLoading(false); }
   }, [search, filterStatus]);

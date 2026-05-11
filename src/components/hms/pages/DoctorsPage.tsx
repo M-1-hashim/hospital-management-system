@@ -77,7 +77,10 @@ export function DoctorsPage() {
     if (search) params.set('search', search);
     if (filterDept && filterDept !== 'all') params.set('departmentId', filterDept);
     const res = await fetch(`/api/doctors?${params}`);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      return Array.isArray(data.doctors) ? data.doctors : (Array.isArray(data) ? data : []);
+    }
     return [];
   }, [search, filterDept]);
 

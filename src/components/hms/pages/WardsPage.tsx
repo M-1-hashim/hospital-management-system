@@ -80,9 +80,18 @@ export function WardsPage() {
         const bedData = bedRes.value.beds || bedRes.value.data || bedRes.value;
         setBeds(Array.isArray(bedData) ? bedData : []);
       }
-      if (patRes.status === 'fulfilled' && patRes.value) setPatients(patRes.value.data || patRes.value);
-      if (docRes.status === 'fulfilled' && docRes.value) setDoctors(docRes.value.data || docRes.value);
-      if (depRes.status === 'fulfilled' && depRes.value) setDepartments(depRes.value.data || depRes.value);
+      if (patRes.status === 'fulfilled' && patRes.value) {
+        const p = patRes.value;
+        setPatients(Array.isArray(p.patients) ? p.patients : (Array.isArray(p.data) ? p.data : (Array.isArray(p) ? p : [])));
+      }
+      if (docRes.status === 'fulfilled' && docRes.value) {
+        const d = docRes.value;
+        setDoctors(Array.isArray(d.doctors) ? d.doctors : (Array.isArray(d.data) ? d.data : (Array.isArray(d) ? d : [])));
+      }
+      if (depRes.status === 'fulfilled' && depRes.value) {
+        const dp = depRes.value;
+        setDepartments(Array.isArray(dp.departments) ? dp.departments : (Array.isArray(dp.data) ? dp.data : (Array.isArray(dp) ? dp : [])));
+      }
       // Build admissions from beds
       const adms: Admission[] = [];
       if (bedRes.status === 'fulfilled' && bedRes.value) {

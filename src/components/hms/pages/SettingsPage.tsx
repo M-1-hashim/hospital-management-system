@@ -140,7 +140,8 @@ export function SettingsPage() {
       ]);
 
       if (depRes.status === 'fulfilled' && depRes.value) {
-        setDepartments(depRes.value.data || depRes.value);
+        const d = depRes.value;
+        setDepartments(Array.isArray(d.departments) ? d.departments : (Array.isArray(d.data) ? d.data : (Array.isArray(d) ? d : [])));
       }
 
       if (userRes.status === 'fulfilled' && userRes.value) {

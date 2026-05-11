@@ -99,9 +99,23 @@ export function BillingPage() {
         fetch('/api/billing?stats=true').then((r) => r.json()),
         fetch('/api/patients?limit=50').then((r) => r.json()),
       ]);
-      if (invRes.status === 'fulfilled' && invRes.value) setInvoices(invRes.value.data || invRes.value);
-      if (statRes.status === 'fulfilled' && statRes.value) setStats(statRes.value);
-      if (patRes.status === 'fulfilled' && patRes.value) setPatients(patRes.value.data || patRes.value);
+      if (invRes.status === 'fulfilled' && invRes.value) {
+        const invData = invRes.value;
+        setInvoices(Array.isArray(invData.invoices) ? invData.invoices : (Array.isArray(invData.data) ? invData.data : (Array.isArray(invData) ? invData : [])));
+      }
+      if (statRes.status === 'fulfilled' && statRes.value) {
+        const s = statRes.value;
+        setStats({
+          todayRevenue: s.todayIncome || 0,
+          monthlyRevenue: s.monthIncome || 0,
+          unpaidInvoices: s.totalUnpaid || 0,
+          paidInvoices: s.totalPaid || 0,
+        });
+      }
+      if (patRes.status === 'fulfilled' && patRes.value) {
+        const patData = patRes.value;
+        setPatients(Array.isArray(patData.patients) ? patData.patients : (Array.isArray(patData.data) ? patData.data : (Array.isArray(patData) ? patData : [])));
+      }
     } catch {
       /* ignore */
     } finally {

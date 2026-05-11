@@ -112,12 +112,18 @@ export function PharmacyPage() {
         fetch('/api/pharmacy?action=prescriptions').then((r) => r.json()),
         fetch('/api/patients?limit=50').then((r) => r.json()),
       ]);
-      if (medRes.status === 'fulfilled' && medRes.value)
-        setMedicines(medRes.value.data || medRes.value);
-      if (rxRes.status === 'fulfilled' && rxRes.value)
-        setPrescriptions(rxRes.value.data || rxRes.value);
-      if (patRes.status === 'fulfilled' && patRes.value)
-        setPatients(patRes.value.data || patRes.value);
+      if (medRes.status === 'fulfilled' && medRes.value) {
+        const m = medRes.value;
+        setMedicines(Array.isArray(m.medicines) ? m.medicines : (Array.isArray(m.data) ? m.data : (Array.isArray(m) ? m : [])));
+      }
+      if (rxRes.status === 'fulfilled' && rxRes.value) {
+        const r = rxRes.value;
+        setPrescriptions(Array.isArray(r.prescriptions) ? r.prescriptions : (Array.isArray(r.data) ? r.data : (Array.isArray(r) ? r : [])));
+      }
+      if (patRes.status === 'fulfilled' && patRes.value) {
+        const p = patRes.value;
+        setPatients(Array.isArray(p.patients) ? p.patients : (Array.isArray(p.data) ? p.data : (Array.isArray(p) ? p : [])));
+      }
     } catch {
       // silent
     } finally {
