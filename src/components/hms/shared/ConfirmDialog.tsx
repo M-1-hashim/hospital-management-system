@@ -67,6 +67,7 @@ export function ConfirmDialog({
     <AlertDialog open={open} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent
         className={cn(
+          'max-w-[calc(100vw-2rem)] sm:max-w-lg',
           isRTL && 'text-right'
         )}
         dir={isRTL ? 'rtl' : 'ltr'}

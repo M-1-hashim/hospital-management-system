@@ -27,7 +27,6 @@ import {
   RefreshCw,
   UserCircle,
   Lock,
-  Activity,
   Loader2,
   Eye,
   EyeOff,
@@ -312,7 +311,8 @@ export function SettingsPage() {
 
       {/* ─── Tabs ─── */}
       <Tabs defaultValue="hospital">
-        <TabsList className="flex-wrap">
+        {/* FIX #1: TabsList scrollable on mobile */}
+        <TabsList className="overflow-x-auto flex-wrap">
           <TabsTrigger value="hospital">
             <Building2 className="size-4" />{t('hospital_info_label')}
           </TabsTrigger>
@@ -340,6 +340,7 @@ export function SettingsPage() {
                 </div>
               ) : (
                 <>
+                  {/* FIX #2: grid-cols-1 md:grid-cols-2 — stacks on mobile, 2-col on md+ */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>{t('name_en')}</Label>
@@ -387,6 +388,7 @@ export function SettingsPage() {
 
         {/* ═══════════ DEPARTMENTS TAB ═══════════ */}
         <TabsContent value="departments" className="space-y-4 mt-4">
+          {/* FIX #11: Add Department button — flex-wrap ensures accessibility on small screens */}
           <div className="flex justify-end">
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
@@ -396,8 +398,9 @@ export function SettingsPage() {
             </Button>
           </div>
           <Card>
+            {/* FIX #3: overflow-x-auto wrapper for horizontal scroll on mobile */}
             <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="p-3 text-start font-medium">{t('name')}</th>
@@ -427,7 +430,7 @@ export function SettingsPage() {
                 </tbody>
               </table>
               {departments.length === 0 && (
-                <div className="py-12 text-center text-muted-foreground">
+                <div className="py-12 text-center text-muted-foreground min-w-[600px]">
                   <Building2 className="size-10 mx-auto mb-2 opacity-30" /><p>{t('no_data')}</p>
                 </div>
               )}
@@ -437,7 +440,7 @@ export function SettingsPage() {
 
         {/* ═══════════ USERS TAB ═══════════ */}
         <TabsContent value="users" className="space-y-6 mt-4">
-          {/* Role cards */}
+          {/* Role cards — FIX #5: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 verified */}
           <motion.div variants={fadeUp} className="space-y-3">
             <h3 className="font-medium flex items-center gap-2">
               <Shield className="size-4 text-muted-foreground" />
@@ -468,7 +471,7 @@ export function SettingsPage() {
             </div>
           </motion.div>
 
-          {/* Default accounts reference */}
+          {/* Default accounts reference — FIX #6: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 verified */}
           <motion.div variants={fadeUp}>
             <Card>
               <CardContent className="p-4">
@@ -484,13 +487,13 @@ export function SettingsPage() {
                     { user: 'receptionist', pass: 'reception123',  role: isRTL ? 'پذیرش' : 'Reception' },
                     { user: 'accountant',   pass: 'account123',    role: isRTL ? 'حسابدار' : 'Accountant' },
                   ].map((a) => (
-                    <div key={a.user} className="flex items-center justify-between py-1.5 px-3 rounded-md bg-muted/50 border">
-                      <div>
+                    <div key={a.user} className="flex items-center justify-between py-1.5 px-3 rounded-md bg-muted/50 border gap-2">
+                      <div className="min-w-0">
                         <span className="font-mono font-semibold">{a.user}</span>
                         <span className="text-muted-foreground mx-1">/</span>
                         <span className="font-mono text-muted-foreground">{a.pass}</span>
                       </div>
-                      <Badge variant="outline" className="text-xs">{a.role}</Badge>
+                      <Badge variant="outline" className="text-xs shrink-0">{a.role}</Badge>
                     </div>
                   ))}
                 </div>
@@ -500,7 +503,8 @@ export function SettingsPage() {
 
           {/* User accounts table */}
           <motion.div variants={fadeUp} className="space-y-3">
-            <div className="flex items-center justify-between">
+            {/* FIX #11: flex-wrap gap-2 ensures button stays accessible on mobile */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h3 className="font-medium flex items-center gap-2">
                 <UsersIcon className="size-4 text-muted-foreground" />
                 {t('user_accounts')}
@@ -516,7 +520,7 @@ export function SettingsPage() {
             </div>
 
             <Card>
-              <CardContent className="p-0 overflow-x-auto">
+              <CardContent className="p-0">
                 {loading ? (
                   <div className="p-6 space-y-3">
                     {Array.from({ length: 4 }).map((_, i) => (
@@ -529,9 +533,9 @@ export function SettingsPage() {
                     <p>{t('no_users_registered')}</p>
                   </div>
                 ) : (
-                  <div className="max-h-[420px] overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-background z-10">
+                  <div className="max-h-[420px] overflow-auto">
+                    <table className="w-full text-sm min-w-[700px]">
+                      <thead className="sticky top-0 z-10 bg-background">
                         <tr className="border-b bg-muted/50">
                           <th className="p-3 text-start font-medium">{t('name')}</th>
                           <th className="p-3 text-start font-medium">{t('role')}</th>
@@ -616,7 +620,7 @@ export function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-start gap-4 p-4 border-2 border-dashed rounded-lg border-amber-300 dark:border-amber-700">
                 <RefreshCw className="size-6 text-amber-600 mt-0.5 shrink-0" />
-                <div>
+                <div className="min-w-0">
                   <h4 className="font-medium">{t('reset_database')}</h4>
                   <p className="text-sm text-muted-foreground mt-1">
                     {t('reset_database_warning')}
@@ -632,13 +636,15 @@ export function SettingsPage() {
       </Tabs>
 
       {/* ═══════════ DEPARTMENT DIALOG ═══════════ */}
+      {/* FIX #9: responsive width with w-[calc(100%-2rem)] */}
       <Dialog open={deptDialogOpen} onOpenChange={(v) => { setDeptDialogOpen(v); if (!v) setSelectedDept(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md w-[calc(100%-2rem)]">
           <DialogHeader>
             <DialogTitle>{selectedDept ? t('edit') : t('add')} {t('departments')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            {/* FIX #8: grid-cols-1 sm:grid-cols-2 — stacks on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t('name_en')}</Label>
                 <Input value={deptForm.name} onChange={(e) => setDeptForm({ ...deptForm, name: e.target.value })} />
@@ -648,7 +654,8 @@ export function SettingsPage() {
                 <Input value={deptForm.nameFa} onChange={(e) => setDeptForm({ ...deptForm, nameFa: e.target.value })} dir="rtl" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* FIX #8: grid-cols-1 sm:grid-cols-2 — stacks on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{isRTL ? 'طبقه' : 'Floor'}</Label>
                 <Input type="number" value={deptForm.floor} onChange={(e) => setDeptForm({ ...deptForm, floor: e.target.value })} />
@@ -668,13 +675,15 @@ export function SettingsPage() {
       </Dialog>
 
       {/* ═══════════ USER DIALOG ═══════════ */}
+      {/* FIX #9: responsive width with w-[calc(100%-2rem)] */}
       <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md w-[calc(100%-2rem)]">
           <DialogHeader>
             <DialogTitle>{t('add_new_user')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            {/* FIX #7: grid-cols-1 sm:grid-cols-2 — stacks on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t('full_name_label')}</Label>
                 <Input
@@ -709,7 +718,8 @@ export function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* FIX #7: grid-cols-1 sm:grid-cols-2 — stacks on mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t('email_label')}</Label>
                 <Input

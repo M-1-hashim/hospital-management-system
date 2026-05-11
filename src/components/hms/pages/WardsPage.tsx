@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { BedDouble, Plus, Search, User, ArrowRightLeft, LogOut, Grid3X3, List, Pencil, Trash2 } from 'lucide-react';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
+import { EmptyState } from '@/components/hms/shared/EmptyState';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
@@ -251,41 +252,95 @@ export function WardsPage() {
 
   return (
     <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.06 } } }} className="space-y-6">
-      {/* Stats */}
-      <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((s, i) => <Card key={i}><CardContent className="p-4 text-center"><p className="text-xs text-muted-foreground">{s.label}</p><p className={`text-3xl font-bold ${s.color}`}>{s.value}</p></CardContent></Card>)}
+      {/* Stats — grid-cols-2 md:grid-cols-4 */}
+      <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {stats.map((s, i) => (
+          <Card key={i}>
+            <CardContent className="p-3 sm:p-4 text-center">
+              <p className="text-xs text-muted-foreground truncate">{s.label}</p>
+              <p className={`text-2xl sm:text-3xl font-bold ${s.color}`}>{s.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </motion.div>
 
-      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      {/* Filters + View Toggle + Action Buttons — wraps on mobile */}
+      <motion.div variants={fadeUp} className="flex flex-col gap-3">
+        {/* Filter row */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={filterDept} onValueChange={setFilterDept}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent>{<SelectItem value="all">{t('all')}</SelectItem>}{departments.map(d => <SelectItem key={d.id} value={d.id}>{isRTL ? d.nameFa : d.name}</SelectItem>)}</SelectContent></Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent>{['all','available','occupied','cleaning','reserved'].map(s => <SelectItem key={s} value={s}>{s === 'all' ? t('all') : s}</SelectItem>)}</SelectContent></Select>
-          <Button variant={view === 'grid' ? 'default' : 'outline'} size="icon" onClick={() => setView('grid')}><Grid3X3 className="size-4" /></Button>
-          <Button variant={view === 'table' ? 'default' : 'outline'} size="icon" onClick={() => setView('table')}><List className="size-4" /></Button>
+          <Select value={filterDept} onValueChange={setFilterDept}>
+            <SelectTrigger className="w-full min-w-[140px] sm:w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('all')}</SelectItem>
+              {departments.map(d => (
+                <SelectItem key={d.id} value={d.id}>{isRTL ? d.nameFa : d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-full min-w-[130px] sm:w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {['all', 'available', 'occupied', 'cleaning', 'reserved'].map(s => (
+                <SelectItem key={s} value={s}>{s === 'all' ? t('all') : s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1 ms-auto">
+            <Button variant={view === 'grid' ? 'default' : 'outline'} size="icon" onClick={() => setView('grid')} className="shrink-0">
+              <Grid3X3 className="size-4" />
+            </Button>
+            <Button variant={view === 'table' ? 'default' : 'outline'} size="icon" onClick={() => setView('table')} className="shrink-0">
+              <List className="size-4" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={openAddBed}><BedDouble className="size-4" />{t('add_bed')}</Button>
-          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setAdmitOpen(true)}><Plus className="size-4" />{t('admit_patient')}</Button>
+        {/* Action buttons — full-width on mobile, row on larger screens */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={openAddBed}>
+            <BedDouble className="size-4" />
+            {t('add_bed')}
+          </Button>
+          <Button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700" onClick={() => setAdmitOpen(true)}>
+            <Plus className="size-4" />
+            {t('admit_patient')}
+          </Button>
         </div>
       </motion.div>
 
+      {/* Content */}
       {view === 'grid' ? (
         <div className="space-y-6">
           {groupedBeds.map(group => (
             <motion.div key={group.id} variants={fadeUp}>
-              <h3 className="font-semibold mb-3 flex items-center gap-2"><BedDouble className="size-4 text-emerald-600" />{isRTL ? group.nameFa : group.name} <Badge variant="outline" className="text-xs">{group.beds.length} {t('beds')}</Badge></h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
+                <BedDouble className="size-4 text-emerald-600 shrink-0" />
+                {isRTL ? group.nameFa : group.name}
+                <Badge variant="outline" className="text-xs">{group.beds.length} {t('beds')}</Badge>
+              </h3>
+              {/* Grid: 2 cols mobile → 3 sm → 5 lg → 6 xl */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3">
                 {group.beds.map(bed => {
                   const patient = bed.admissions?.find(a => a.status === 'active')?.patient;
                   return (
-                    <Card key={bed.id} className={`cursor-pointer border-2 transition-all hover:shadow-md ${bedColors[bed.status] || ''}`} onClick={() => { setSelectedBed(bed); setBedOpen(true); }}>
-                      <CardContent className="p-3 text-center">
-                        <div className="text-lg font-bold">{bed.number}</div>
-                        <div className="text-xs text-muted-foreground">{bed.roomNumber ? `Room ${bed.roomNumber}` : ''}</div>
-                        <Badge className={`mt-1 text-xs ${typeBadge[bed.type] || ''}`}>{bed.type}</Badge>
-                        <div className="mt-2"><StatusBadge status={bed.status} /></div>
+                    <Card
+                      key={bed.id}
+                      className={`cursor-pointer border-2 transition-all hover:shadow-md ${bedColors[bed.status] || ''}`}
+                      onClick={() => { setSelectedBed(bed); setBedOpen(true); }}
+                    >
+                      <CardContent className="p-2.5 sm:p-3 text-center">
+                        <div className="text-base sm:text-lg font-bold">{bed.number}</div>
+                        <div className="text-xs text-muted-foreground truncate">{bed.roomNumber ? `Room ${bed.roomNumber}` : ''}</div>
+                        <Badge className={`mt-1 text-[10px] sm:text-xs ${typeBadge[bed.type] || ''}`}>{bed.type}</Badge>
+                        <div className="mt-1.5 sm:mt-2"><StatusBadge status={bed.status} /></div>
                         {patient && <p className="text-xs font-medium mt-1 truncate">{patient.firstName} {patient.lastName}</p>}
-                        <p className="text-xs text-muted-foreground mt-0.5">{Number(bed.dailyRate).toLocaleString()}<span className="text-[10px]">/{isRTL ? 'روز' : 'day'}</span></p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {Number(bed.dailyRate).toLocaleString()}
+                          <span className="text-[10px]">/{isRTL ? 'روز' : 'day'}</span>
+                        </p>
                       </CardContent>
                     </Card>
                   );
@@ -295,73 +350,113 @@ export function WardsPage() {
           ))}
         </div>
       ) : (
+        /* Table view — horizontal scroll wrapper with min-width */
         <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b bg-muted/50"><th className="p-3 text-start font-medium">{t('bed_number_label')}</th><th className="p-3 text-start font-medium">{t('room_number_label')}</th><th className="p-3 text-start font-medium">{t('departments')}</th><th className="p-3 text-start font-medium">{t('bed_type_label')}</th><th className="p-3 text-start font-medium">{t('status')}</th><th className="p-3 text-start font-medium">{t('patient_label')}</th><th className="p-3 text-start font-medium">{t('daily_rate_label')}</th></tr></thead>
-              <tbody>
-                {filteredBeds.map(bed => {
-                  const patient = bed.admissions?.find(a => a.status === 'active')?.patient;
-                  const admission = bed.admissions?.find(a => a.status === 'active');
-                  return (
-                    <tr key={bed.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => { setSelectedBed(bed); if (admission) { setSelectedAdmission({ ...admission, bed }); } setBedOpen(true); }}>
-                      <td className="p-3 font-medium">{bed.number}</td>
-                      <td className="p-3">{bed.roomNumber || '-'}</td>
-                      <td className="p-3">{bed.department ? (isRTL ? bed.department.nameFa : bed.department.name) : '-'}</td>
-                      <td className="p-3"><Badge className={`text-xs ${typeBadge[bed.type] || ''}`}>{bed.type}</Badge></td>
-                      <td className="p-3"><StatusBadge status={bed.status} /></td>
-                      <td className="p-3">{patient ? `${patient.firstName} ${patient.lastName}` : '-'}</td>
-                      <td className="p-3">{Number(bed.dailyRate).toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[700px]">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-start font-medium">{t('bed_number_label')}</th>
+                    <th className="p-3 text-start font-medium">{t('room_number_label')}</th>
+                    <th className="p-3 text-start font-medium">{t('departments')}</th>
+                    <th className="p-3 text-start font-medium">{t('bed_type_label')}</th>
+                    <th className="p-3 text-start font-medium">{t('status')}</th>
+                    <th className="p-3 text-start font-medium">{t('patient_label')}</th>
+                    <th className="p-3 text-start font-medium">{t('daily_rate_label')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBeds.map(bed => {
+                    const patient = bed.admissions?.find(a => a.status === 'active')?.patient;
+                    const admission = bed.admissions?.find(a => a.status === 'active');
+                    return (
+                      <tr
+                        key={bed.id}
+                        className="border-b hover:bg-muted/30 cursor-pointer"
+                        onClick={() => { setSelectedBed(bed); if (admission) { setSelectedAdmission({ ...admission, bed }); } setBedOpen(true); }}
+                      >
+                        <td className="p-3 font-medium">{bed.number}</td>
+                        <td className="p-3">{bed.roomNumber || '-'}</td>
+                        <td className="p-3">{bed.department ? (isRTL ? bed.department.nameFa : bed.department.name) : '-'}</td>
+                        <td className="p-3"><Badge className={`text-xs ${typeBadge[bed.type] || ''}`}>{bed.type}</Badge></td>
+                        <td className="p-3"><StatusBadge status={bed.status} /></td>
+                        <td className="p-3">{patient ? `${patient.firstName} ${patient.lastName}` : '-'}</td>
+                        <td className="p-3">{Number(bed.dailyRate).toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {filteredBeds.length === 0 && <Card className="py-16 text-center text-muted-foreground"><BedDouble className="size-12 mx-auto mb-3 opacity-30" /><p>{t('no_data')}</p></Card>}
+      {filteredBeds.length === 0 && (
+        <Card className="py-12 sm:py-16 text-center text-muted-foreground">
+          <BedDouble className="size-10 sm:size-12 mx-auto mb-3 opacity-30" />
+          <p>{t('no_data')}</p>
+        </Card>
+      )}
 
-      {/* Bed Detail Dialog */}
+      {/* ─── Bed Detail Dialog ─── */}
       <Dialog open={bedOpen} onOpenChange={setBedOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md w-[calc(100%-2rem)]">
           {selectedBed && (<>
-            <DialogHeader><DialogTitle>{selectedBed.number} - {selectedBed.roomNumber}</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle className="text-lg">{selectedBed.number} {selectedBed.roomNumber ? `- ${selectedBed.roomNumber}` : ''}</DialogTitle>
+            </DialogHeader>
             <div className="space-y-3">
-              <div className="flex items-center justify-between"><Badge className={typeBadge[selectedBed.type]}>{selectedBed.type}</Badge><StatusBadge status={selectedBed.status} /></div>
-              <p>{t('departments')}: {selectedBed.department ? (isRTL ? selectedBed.department.nameFa : selectedBed.department.name) : '-'}</p>
-              <p>{t('daily_rate_label')}: {Number(selectedBed.dailyRate).toLocaleString()}</p>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Badge className={typeBadge[selectedBed.type]}>{selectedBed.type}</Badge>
+                <StatusBadge status={selectedBed.status} />
+              </div>
+              <p className="text-sm">{t('departments')}: {selectedBed.department ? (isRTL ? selectedBed.department.nameFa : selectedBed.department.name) : '-'}</p>
+              <p className="text-sm">{t('daily_rate_label')}: {Number(selectedBed.dailyRate).toLocaleString()}</p>
               {selectedBed.notes && <p className="text-sm text-muted-foreground">{t('notes_label')}: {selectedBed.notes}</p>}
               {selectedBed.admissions?.filter(a => a.status === 'active').map(adm => (
                 <Card key={adm.id} className="p-3 bg-muted/50">
                   <p className="font-medium">{adm.patient?.firstName} {adm.patient?.lastName}</p>
                   <p className="text-xs text-muted-foreground">{t('primary_diagnosis_label')}: {adm.diagnosis || '-'}</p>
                   <p className="text-xs text-muted-foreground">{t('admit_patient_confirm')}: {new Date(adm.admitDate).toLocaleDateString()}</p>
-                  <div className="flex gap-2 mt-2">
-                    <Button size="sm" variant="outline" onClick={() => { setSelectedAdmission({ ...adm, bed: selectedBed }); setTransferOpen(true); }}><ArrowRightLeft className="size-3" />{t('transfer')}</Button>
-                    <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={() => { setSelectedAdmission({ ...adm, bed: selectedBed }); setDischargeOpen(true); }}><LogOut className="size-3" />{t('discharge')}</Button>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                    <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => { setSelectedAdmission({ ...adm, bed: selectedBed }); setTransferOpen(true); }}>
+                      <ArrowRightLeft className="size-3" />
+                      {t('transfer')}
+                    </Button>
+                    <Button size="sm" className="w-full sm:w-auto bg-red-600 hover:bg-red-700" onClick={() => { setSelectedAdmission({ ...adm, bed: selectedBed }); setDischargeOpen(true); }}>
+                      <LogOut className="size-3" />
+                      {t('discharge')}
+                    </Button>
                   </div>
                 </Card>
               ))}
               {/* Edit/Delete bed buttons */}
-              <div className="flex gap-2 pt-2 border-t">
-                <Button variant="outline" size="sm" className="flex-1" onClick={(e) => { e.stopPropagation(); openEditBed(selectedBed); }}><Pencil className="size-3" />{t('edit_bed')}</Button>
-                <Button variant="outline" size="sm" className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); openDeleteBed(selectedBed); }}><Trash2 className="size-3" />{t('delete_bed')}</Button>
+              <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                <Button variant="outline" size="sm" className="w-full sm:flex-1" onClick={(e) => { e.stopPropagation(); openEditBed(selectedBed); }}>
+                  <Pencil className="size-3" />
+                  {t('edit_bed')}
+                </Button>
+                <Button variant="outline" size="sm" className="w-full sm:flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); openDeleteBed(selectedBed); }}>
+                  <Trash2 className="size-3" />
+                  {t('delete_bed')}
+                </Button>
               </div>
             </div>
           </>)}
         </DialogContent>
       </Dialog>
 
-      {/* Bed Form Dialog (Add/Edit) */}
+      {/* ─── Bed Form Dialog (Add/Edit) ─── */}
       <Dialog open={bedFormOpen} onOpenChange={setBedFormOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md w-[calc(100%-2rem)]">
           <DialogHeader>
-            <DialogTitle>{selectedBedForEdit ? t('edit_bed') : t('add_bed')}</DialogTitle>
+            <DialogTitle className="text-lg">{selectedBedForEdit ? t('edit_bed') : t('add_bed')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3 py-2">
+            {/* Bed number + Room number — stacked on mobile, side-by-side on sm+ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>{t('bed_number_label')} *</Label>
                 <Input
@@ -383,7 +478,9 @@ export function WardsPage() {
             <div>
               <Label>{t('departments')} *</Label>
               <Select value={bedForm.departmentId} onValueChange={v => setBedForm({ ...bedForm, departmentId: v })}>
-                <SelectTrigger><SelectValue placeholder={isRTL ? 'انتخاب بخش' : 'Select department'} /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder={isRTL ? 'انتخاب بخش' : 'Select department'} />
+                </SelectTrigger>
                 <SelectContent>
                   {departments.map(d => (
                     <SelectItem key={d.id} value={d.id}>{isRTL ? d.nameFa : d.name}</SelectItem>
@@ -392,7 +489,8 @@ export function WardsPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Type + Status — stacked on mobile, side-by-side on sm+ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label>{t('bed_type_label')}</Label>
                 <Select value={bedForm.type} onValueChange={v => setBedForm({ ...bedForm, type: v })}>
@@ -446,7 +544,7 @@ export function WardsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* ─── Delete Confirmation Dialog ─── */}
       <ConfirmDialog
         open={deleteConfirmOpen}
         onClose={() => { setDeleteConfirmOpen(false); setBedToDelete(null); }}
@@ -460,36 +558,111 @@ export function WardsPage() {
         cancelLabel={t('cancel')}
       />
 
-      {/* Admit Dialog */}
+      {/* ─── Admit Dialog ─── */}
       <Dialog open={admitOpen} onOpenChange={setAdmitOpen}>
-        <DialogContent className="max-w-md"><DialogHeader><DialogTitle>{t('admit_patient')}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md w-[calc(100%-2rem)]">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{t('admit_patient')}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3 py-2">
-            <div><Label>{t('patient')}</Label><Select value={admitForm.patientId} onValueChange={v => setAdmitForm({ ...admitForm, patientId: v })}><SelectTrigger><SelectValue placeholder={isRTL ? 'انتخاب بیمار' : 'Select patient'} /></SelectTrigger><SelectContent>{patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>{t('bed_number_label')}</Label><Select value={admitForm.bedId} onValueChange={v => setAdmitForm({ ...admitForm, bedId: v })}><SelectTrigger><SelectValue placeholder={t('select_available_bed')} /></SelectTrigger><SelectContent>{availableBeds.map(b => <SelectItem key={b.id} value={b.id}>{b.number} ({b.department ? (isRTL ? b.department.nameFa : b.department.name) : ''}) - {b.type}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>{t('doctor')}</Label><Select value={admitForm.doctorId} onValueChange={v => setAdmitForm({ ...admitForm, doctorId: v })}><SelectTrigger><SelectValue placeholder={isRTL ? 'انتخاب پزشک' : 'Select doctor'} /></SelectTrigger><SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}</SelectContent></Select></div>
-            <div><Label>{t('primary_diagnosis_label')}</Label><Textarea value={admitForm.diagnosis} onChange={e => setAdmitForm({ ...admitForm, diagnosis: e.target.value })} /></div>
-            <Button onClick={handleAdmit} className="w-full bg-emerald-600 hover:bg-emerald-700">{t('confirm_admit')}</Button>
+            <div>
+              <Label>{t('patient')}</Label>
+              <Select value={admitForm.patientId} onValueChange={v => setAdmitForm({ ...admitForm, patientId: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder={isRTL ? 'انتخاب بیمار' : 'Select patient'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {patients.map(p => <SelectItem key={p.id} value={p.id}>{p.firstName} {p.lastName}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t('bed_number_label')}</Label>
+              <Select value={admitForm.bedId} onValueChange={v => setAdmitForm({ ...admitForm, bedId: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('select_available_bed')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableBeds.map(b => <SelectItem key={b.id} value={b.id}>{b.number} ({b.department ? (isRTL ? b.department.nameFa : b.department.name) : ''}) - {b.type}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t('doctor')}</Label>
+              <Select value={admitForm.doctorId} onValueChange={v => setAdmitForm({ ...admitForm, doctorId: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder={isRTL ? 'انتخاب پزشک' : 'Select doctor'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.firstName} {d.lastName}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t('primary_diagnosis_label')}</Label>
+              <Textarea
+                value={admitForm.diagnosis}
+                onChange={e => setAdmitForm({ ...admitForm, diagnosis: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <Button onClick={handleAdmit} className="w-full bg-emerald-600 hover:bg-emerald-700">
+              {t('confirm_admit')}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Discharge Dialog */}
+      {/* ─── Discharge Dialog ─── */}
       <Dialog open={dischargeOpen} onOpenChange={setDischargeOpen}>
-        <DialogContent className="max-w-sm"><DialogHeader><DialogTitle>{t('discharge_patient')}</DialogTitle></DialogHeader>
-          {selectedAdmission && <div className="space-y-3">
-            <Card className="p-3"><p className="font-medium">{selectedAdmission.patient?.firstName} {selectedAdmission.patient?.lastName}</p><p className="text-xs text-muted-foreground">{t('bed_number_label')}: {selectedAdmission.bed?.number} | {t('primary_diagnosis_label')}: {selectedAdmission.diagnosis}</p></Card>
-            <Button onClick={handleDischarge} className="w-full bg-red-600 hover:bg-red-700">{t('confirm_discharge')}</Button>
-          </div>}</DialogContent>
+        <DialogContent className="max-w-sm w-[calc(100%-2rem)]">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{t('discharge_patient')}</DialogTitle>
+          </DialogHeader>
+          {selectedAdmission && (
+            <div className="space-y-3">
+              <Card className="p-3">
+                <p className="font-medium">{selectedAdmission.patient?.firstName} {selectedAdmission.patient?.lastName}</p>
+                <p className="text-xs text-muted-foreground">{t('bed_number_label')}: {selectedAdmission.bed?.number} | {t('primary_diagnosis_label')}: {selectedAdmission.diagnosis}</p>
+              </Card>
+              <Button onClick={handleDischarge} className="w-full bg-red-600 hover:bg-red-700">
+                {t('confirm_discharge')}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
       </Dialog>
 
-      {/* Transfer Dialog */}
+      {/* ─── Transfer Dialog ─── */}
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-        <DialogContent className="max-w-sm"><DialogHeader><DialogTitle>{t('transfer_patient')}</DialogTitle></DialogHeader>
-          {selectedAdmission && <div className="space-y-3">
-            <Card className="p-3"><p className="text-sm">{t('current_bed')}: <strong>{selectedAdmission.bed?.number}</strong> | {selectedAdmission.patient?.firstName} {selectedAdmission.patient?.lastName}</p></Card>
-            <div><Label>{t('target_bed')}</Label><Select value={transferForm.toBedId} onValueChange={v => setTransferForm({ ...transferForm, toBedId: v })}><SelectTrigger><SelectValue placeholder={t('select_available_bed')} /></SelectTrigger><SelectContent>{availableBeds.filter(b => b.id !== selectedAdmission.bedId).map(b => <SelectItem key={b.id} value={b.id}>{b.number} - {b.type} ({b.department ? (isRTL ? b.department.nameFa : b.department.name) : ''})</SelectItem>)}</SelectContent></Select></div>
-            <Button onClick={handleTransfer} className="w-full bg-emerald-600 hover:bg-emerald-700">{t('confirm_transfer')}</Button>
-          </div>}</DialogContent>
+        <DialogContent className="max-w-sm w-[calc(100%-2rem)]">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{t('transfer_patient')}</DialogTitle>
+          </DialogHeader>
+          {selectedAdmission && (
+            <div className="space-y-3">
+              <Card className="p-3">
+                <p className="text-sm">{t('current_bed')}: <strong>{selectedAdmission.bed?.number}</strong> | {selectedAdmission.patient?.firstName} {selectedAdmission.patient?.lastName}</p>
+              </Card>
+              <div>
+                <Label>{t('target_bed')}</Label>
+                <Select value={transferForm.toBedId} onValueChange={v => setTransferForm({ ...transferForm, toBedId: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('select_available_bed')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableBeds.filter(b => b.id !== selectedAdmission.bedId).map(b => (
+                      <SelectItem key={b.id} value={b.id}>{b.number} - {b.type} ({b.department ? (isRTL ? b.department.nameFa : b.department.name) : ''})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleTransfer} className="w-full bg-emerald-600 hover:bg-emerald-700">
+                {t('confirm_transfer')}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
       </Dialog>
     </motion.div>
   );

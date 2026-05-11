@@ -57,7 +57,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             return (
               <Tooltip key={item.key}>
                 <TooltipTrigger asChild>
-                  <button onClick={() => handleNavClick(item.key)} className={cn('group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 hover:bg-sidebar-accent focus-visible:outline-none', isActive ? 'text-sidebar-foreground' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground/90')} aria-current={isActive ? 'page' : undefined}>
+                  <button onClick={() => handleNavClick(item.key)} className={cn('group relative flex w-full min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 hover:bg-sidebar-accent focus-visible:outline-none', isActive ? 'text-sidebar-foreground' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground/90')} aria-current={isActive ? 'page' : undefined}>
                     {isActive && <motion.div layoutId="sidebarActiveIndicator" className={cn('absolute rounded-lg bg-sidebar-primary', isRTL ? 'right-0' : 'left-0', 'inset-y-1 w-[3px]')} transition={{ type: 'spring', stiffness: 300, damping: 30 }} />}
                     <Icon className={cn('size-[18px] shrink-0', isActive && 'text-sidebar-primary')} />
                     <span className="truncate">{t(item.key)}</span>
@@ -73,10 +73,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Bottom */}
       <div className="flex flex-col gap-1 p-3 pt-0">
         <div className="flex items-center gap-1 rounded-lg bg-sidebar-accent/50 px-1 py-1">
-          <Button variant="ghost" size="sm" onClick={() => setLocale(locale === 'en' ? 'fa' : 'en')} className="flex-1 justify-start gap-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"><Globe className="size-3.5" /><span className="text-[11px]">{locale === 'en' ? 'فارسی' : 'English'}</span></Button>
-          <Button variant="ghost" size="sm" onClick={toggleTheme} className="flex-1 justify-start gap-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent">{theme === 'light' ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}<span className="text-[11px]">{t(theme === 'light' ? 'dark' : 'light')}</span></Button>
+          <Button variant="ghost" size="sm" onClick={() => setLocale(locale === 'en' ? 'fa' : 'en')} className="min-h-[44px] flex-1 justify-start gap-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"><Globe className="size-3.5" /><span className="text-[11px]">{locale === 'en' ? 'فارسی' : 'English'}</span></Button>
+          <Button variant="ghost" size="sm" onClick={toggleTheme} className="min-h-[44px] flex-1 justify-start gap-1.5 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent">{theme === 'light' ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}<span className="text-[11px]">{t(theme === 'light' ? 'dark' : 'light')}</span></Button>
         </div>
-        <div className="flex items-center gap-3 rounded-xl px-3 py-2.5">
+        <div className="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5">
           <Avatar className="size-8 ring-2 ring-sidebar-primary/20"><AvatarFallback className="bg-sidebar-primary/20 text-[10px] font-bold text-sidebar-primary">{user?.fullName ? user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'U'}</AvatarFallback></Avatar>
           <div className="flex min-w-0 flex-1 flex-col"><span className="truncate text-xs font-semibold text-sidebar-foreground">{user?.fullName ?? 'User'}</span><Badge variant="secondary" className="w-fit bg-sidebar-accent text-[9px] text-sidebar-foreground/70 px-1.5 py-0">{user?.role ? t(user.role) : t('admin')}</Badge></div>
         </div>

@@ -35,7 +35,7 @@ export function Header({ onMenuClick, onSearchClick }: HeaderProps) {
       {/* Notifications */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="relative size-8"><Bell className="size-4" />{<Badge className="absolute -top-0.5 -end-0.5 flex size-4 items-center justify-center rounded-full bg-red-500 p-0 text-[9px] text-white">3</Badge>}</Button></DropdownMenuTrigger>
-        <DropdownMenuContent align={isRTL ? 'start' : 'end'} className="w-64">
+        <DropdownMenuContent align={isRTL ? 'start' : 'end'} className="w-64 max-w-[85vw]">
           <DropdownMenuLabel>{t('notifications')}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {[{ t: 'icu_beds_full', time: '5m' }, { t: 'expiring_meds', time: '1h' }, { t: 'cancelled_appointments', time: '2h' }].map((n, i) => <DropdownMenuItem key={i} className="flex flex-col items-start gap-0.5 py-2.5"><span className="text-sm">{t(n.t)}</span><span className="text-[11px] text-muted-foreground">{n.time}</span></DropdownMenuItem>)}
@@ -51,7 +51,7 @@ export function Header({ onMenuClick, onSearchClick }: HeaderProps) {
             <ChevronDown className="hidden size-3 text-muted-foreground sm:block" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align={isRTL ? 'start' : 'end'} className="w-44">
+        <DropdownMenuContent align={isRTL ? 'start' : 'end'} className="w-44 max-w-[85vw]">
           <DropdownMenuLabel>{user?.fullName}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => useNavStore.getState().setCurrentPage('settings')}><User className="me-2 size-3.5" />{t('profile')}</DropdownMenuItem>

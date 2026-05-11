@@ -40,12 +40,12 @@ export function AppLayout() {
   const PageComponent = PAGE_MAP[currentPage] || DashboardPage;
 
   return (
-    <div className="flex h-screen bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex h-screen overflow-hidden bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
       <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMenuClick={() => setMobileSidebarOpen(true)} onSearchClick={() => setSearchOpen(true)} />
         <ScrollArea className="flex-1">
-          <main className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8">
+          <main className="mx-auto w-full max-w-[1500px] overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8">
             <PageComponent />
           </main>
         </ScrollArea>

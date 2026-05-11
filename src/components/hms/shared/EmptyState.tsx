@@ -25,7 +25,7 @@ export function EmptyState({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="flex flex-col items-center justify-center gap-4 py-16 text-center"
+      className="flex flex-col items-center justify-center gap-4 px-4 py-10 text-center sm:py-16"
     >
       {Icon && (
         <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
