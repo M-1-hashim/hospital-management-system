@@ -90,7 +90,7 @@ export function DoctorsPage() {
       const [docResult, deptResult] = await Promise.allSettled([
         fetchDoctors(),
         fetch('/api/departments')
-          .then((r) => (r.ok ? r.json() : []))
+          .then(async (r) => { if (!r.ok) return []; const d = await r.json(); return Array.isArray(d.departments) ? d.departments : (Array.isArray(d) ? d : []); })
           .catch(() => []),
       ]);
       if (!cancelled) {
