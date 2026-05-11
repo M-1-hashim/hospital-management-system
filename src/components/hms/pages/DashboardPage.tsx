@@ -32,7 +32,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useLanguageStore, useAuthStore, useNavStore } from '@/store';
 import { StatsCard } from '@/components/hms/shared/StatsCard';
@@ -637,7 +636,7 @@ export default function DashboardPage() {
               </Badge>
             </div>
             {recentPatients.length > 0 ? (
-              <ScrollArea className="max-h-[320px]">
+              <div className="max-h-[320px] overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                     <tr className="border-b">
@@ -695,7 +694,7 @@ export default function DashboardPage() {
                     ))}
                   </tbody>
                 </table>
-              </ScrollArea>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <UserCircle className="mb-2 size-10 opacity-40" />
@@ -720,7 +719,7 @@ export default function DashboardPage() {
               </Badge>
             </div>
             {todayAppointments.length > 0 ? (
-              <ScrollArea className="max-h-[320px]">
+              <div className="max-h-[320px] overflow-y-auto">
                 <div className="divide-y">
                   {todayAppointments.map((appt, idx) => (
                     <div
@@ -747,7 +746,7 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Clock className="mb-2 size-10 opacity-40" />

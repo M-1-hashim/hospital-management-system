@@ -6,7 +6,6 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { LoginPage } from './LoginPage';
 import { SearchDialog } from './SearchDialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import DashboardPage from '@/components/hms/pages/DashboardPage';
 import PatientsPage from '@/components/hms/pages/PatientsPage';
 import { DoctorsPage } from '@/components/hms/pages/DoctorsPage';
@@ -42,13 +41,13 @@ export function AppLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
       <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col min-h-0">
         <Header onMenuClick={() => setMobileSidebarOpen(true)} onSearchClick={() => setSearchOpen(true)} />
-        <ScrollArea className="flex-1">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <main className="mx-auto w-full max-w-[1500px] overflow-x-hidden p-3 sm:p-4 md:p-6 lg:p-8">
             <PageComponent />
           </main>
-        </ScrollArea>
+        </div>
       </div>
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
       <Toaster position={isRTL ? 'top-left' : 'top-right'} richColors />
