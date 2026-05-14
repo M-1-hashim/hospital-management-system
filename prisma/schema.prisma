@@ -28,6 +28,8 @@ model User {
   labRequests   LabTest[]
   doctorProfile Doctor?
   staffProfile  Staff?
+  auditLogs     AuditLog[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -74,6 +76,9 @@ model Patient {
   prescriptions   Prescription[]
   admissions      Admission[]
   vitalRecords    VitalRecord[]
+  queues          Queue[]
+  visitRecords    VisitRecord[]
+  medicalDocuments MedicalDocument[]
 
   @@map("patients")
 }
@@ -123,6 +128,7 @@ model Doctor {
   prescriptions   Prescription[]
   labTests        LabTest[]
   admissions      Admission[]
+  visitRecords    VisitRecord[]
 
   @@map("doctors")
 }
@@ -211,6 +217,7 @@ model Invoice {
 
   patient       Patient  @relation(fields: [patientId], references: [id])
   items         InvoiceItem[]
+  payments      Payment[]
 
   @@map("invoices")
 }
@@ -313,6 +320,38 @@ model LabTest {
   @@map("lab_tests")
 }
 
+// ====== BLOOD BANK / BLOOD BAGS ======
+model BloodBag {
+  id              String    @id @default(cuid())
+  bagNumber       String    @unique
+  donorName       String
+  donorPhone      String?
+  donorNationalId String?
+  bloodType       String    // A+, A-, B+, B-, AB+, AB-, O+, O-
+  rhFactor        String    @default("+") // + or -
+  volume          Int       @default(450) // ml
+  collectionDate  DateTime  @default(now())
+  expiryDate      DateTime
+  status          String    @default("collected") // collected, tested, stored, issued, used, expired, discarded
+  hivTest         String?   // negative, positive, pending
+  hepatitisBTest  String?   // negative, positive, pending
+  hepatitisCTest  String?   // negative, positive, pending
+  malariaTest     String?   // negative, positive, pending
+  syphilisTest    String?   // negative, positive, pending
+  testedBy        String?   // staff/tech name
+  testedDate      DateTime?
+  issuedTo        String?   // patient name if issued
+  issuedDate      DateTime?
+  collectedBy     String?   // staff who collected
+  notes           String?
+  fileName        String?   // uploaded document/file name
+  filePath        String?   // path to uploaded file
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("blood_bags")
+}
+
 // ====== STAFF ======
 model Staff {
   id            String   @id @default(cuid())
@@ -332,6 +371,8 @@ model Staff {
 
   user          User?       @relation(fields: [userId], references: [id])
   department    Department? @relation(fields: [departmentId], references: [id])
+  shiftSchedules ShiftSchedule[]
+  attendances   Attendance[]
 
   @@map("staff")
 }
@@ -406,4 +447,169 @@ model VitalRecord {
   patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@map("vital_records")
+}
+
+// ====== QUEUE SYSTEM ======
+model Queue {
+  id          String    @id @default(cuid())
+  queueNumber Int
+  patientId   String?
+  patientName String
+  priority    String    @default("normal") // normal, urgent, emergency
+  department  String
+  status      String    @default("waiting") // waiting, called, completed, cancelled
+  calledAt    DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  patient     Patient?  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@unique([department, queueNumber])
+  @@map("queues")
+}
+
+// ====== EHR VISIT RECORDS ======
+model VisitRecord {
+  id            String   @id @default(cuid())
+  patientId     String
+  doctorId      String
+  visitDate     DateTime @default(now())
+  chiefComplaint String
+  symptoms      String
+  examination   String?
+  diagnosis     String?
+  treatmentPlan String
+  followUpDate  DateTime?
+  attachments   String?  // JSON
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  patient       Patient  @relation(fields: [patientId], references: [id])
+  doctor        Doctor   @relation(fields: [doctorId], references: [id])
+  documents     MedicalDocument[]
+
+  @@map("visit_records")
+}
+
+// ====== EHR FILE ATTACHMENTS ======
+model MedicalDocument {
+  id             String   @id @default(cuid())
+  patientId      String
+  visitRecordId  String?
+  fileName       String
+  filePath       String
+  fileType       String
+  fileSize       Int
+  category       String   @default("other") // lab_result, imaging, prescription, other
+  uploadedAt     DateTime @default(now())
+
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  visitRecord    VisitRecord? @relation(fields: [visitRecordId], references: [id], onDelete: SetNull)
+
+  @@map("medical_documents")
+}
+
+// ====== STAFF SHIFT SCHEDULING ======
+model ShiftSchedule {
+  id        String   @id @default(cuid())
+  staffId   String
+  date      DateTime
+  shiftType String   @default("morning") // morning, evening, night
+  startTime DateTime
+  endTime   DateTime
+  status    String   @default("scheduled") // scheduled, completed, absent, late
+  notes     String?
+  createdAt DateTime @default(now())
+
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date, shiftType])
+  @@map("shift_schedules")
+}
+
+// ====== STAFF ATTENDANCE ======
+model Attendance {
+  id         String    @id @default(cuid())
+  staffId    String
+  date       DateTime
+  clockIn    DateTime?
+  clockOut   DateTime?
+  totalHours Float?
+  status     String    @default("present") // present, absent, late, half_day
+  notes      String?
+  createdAt  DateTime  @default(now())
+
+  staff      Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date])
+  @@map("attendances")
+}
+
+// ====== PAYMENT TRACKING ======
+model Payment {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  amount         Float
+  method         String   @default("cash") // cash, card, insurance, mixed
+  referenceNumber String?
+  status         String   @default("completed") // completed, pending, refunded
+  paidAt         DateTime @default(now())
+  receivedBy     String?
+  notes          String?
+
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ====== SYSTEM AUDIT TRAIL ======
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String   // create, update, delete, login, logout, view
+  entity     String   // patient, doctor, invoice, medicine, etc.
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ====== IN-APP NOTIFICATIONS ======
+model Notification {
+  id                String    @id @default(cuid())
+  userId            String?
+  type              String    @default("system") // appointment, lab_result, medicine_expiry, bed, billing, system
+  title             String
+  message           String
+  priority          String    @default("medium") // low, medium, high, critical
+  isRead            Boolean   @default(false)
+  relatedEntityType String?
+  relatedEntityId   String?
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+
+  user              User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ====== BACKUP TRACKING ======
+model BackupRecord {
+  id        String   @id @default(cuid())
+  fileName  String
+  filePath  String
+  fileSize  Int
+  type      String   @default("auto") // auto, manual
+  status    String   @default("completed") // completed, failed
+  createdAt DateTime @default(now())
+
+  @@map("backup_records")
 }

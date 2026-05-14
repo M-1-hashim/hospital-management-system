@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguageStore } from '@/store';
+import { apiFetch } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,12 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   AlertTriangle, Pill, Plus, Search, Package, Trash2, Eye,
   Edit, CalendarDays, AlertCircle, FileText, DollarSign,
-  TrendingDown, Clock,
+  TrendingDown, Clock, ScanBarcode,
 } from 'lucide-react';
 import { StatsCard } from '@/components/hms/shared/StatsCard';
 import { EmptyState } from '@/components/hms/shared/EmptyState';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
+import { CollapsiblePanel } from '@/components/hms/shared/CollapsiblePanel';
+import { BarcodeScanner } from '@/components/hms/shared/BarcodeScanner';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
@@ -100,6 +103,7 @@ export function PharmacyPage() {
   const [form, setForm] = useState({ ...defaultForm });
   const [rxForm, setRxForm] = useState({ patientId: '', doctorId: '', notes: '' });
   const [rxItems, setRxItems] = useState([{ ...defaultRxItem }]);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -108,9 +112,9 @@ export function PharmacyPage() {
       if (lowOnly) params.set('lowStock', 'true');
       if (expiringOnly) params.set('expiringSoon', 'true');
       const [medRes, rxRes, patRes] = await Promise.allSettled([
-        fetch(`/api/pharmacy?${params}`).then((r) => r.json()),
-        fetch('/api/pharmacy?action=prescriptions').then((r) => r.json()),
-        fetch('/api/patients?limit=50').then((r) => r.json()),
+        apiFetch(`/api/pharmacy?${params}`).catch(() => null),
+        apiFetch('/api/pharmacy?action=prescriptions').catch(() => null),
+        apiFetch('/api/patients?limit=50').catch(() => null),
       ]);
       if (medRes.status === 'fulfilled' && medRes.value) {
         const m = medRes.value;
@@ -148,29 +152,24 @@ export function PharmacyPage() {
   const handleSaveMedicine = async () => {
     try {
       const isEdit = !!selectedMed;
-      const res = await fetch(
+      await apiFetch(
         isEdit ? `/api/pharmacy?id=${selectedMed!.id}` : '/api/pharmacy',
         {
           method: isEdit ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: {
             ...form,
             price: Number(form.price),
             stock: Number(form.stock),
             minStock: Number(form.minStock),
             isActive: form.isActive === 'true',
-          }),
+          },
         }
       );
-      if (res.ok) {
-        toast.success(t('saved'));
-        setDialogOpen(false);
-        setSelectedMed(null);
-        setForm({ ...defaultForm });
-        fetchData();
-      } else {
-        toast.error(t('error'));
-      }
+      toast.success(t('saved'));
+      setDialogOpen(false);
+      setSelectedMed(null);
+      setForm({ ...defaultForm });
+      fetchData();
     } catch {
       toast.error(t('error'));
     }
@@ -197,15 +196,11 @@ export function PharmacyPage() {
 
   const handleDeleteMedicine = async (id: string) => {
     try {
-      const res = await fetch(`/api/pharmacy?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success(t('deleted'));
-        setDeleteConfirmOpen(false);
-        setDeleteTarget(null);
-        fetchData();
-      } else {
-        toast.error(t('error'));
-      }
+      await apiFetch(`/api/pharmacy?id=${id}`, { method: 'DELETE' });
+      toast.success(t('deleted'));
+      setDeleteConfirmOpen(false);
+      setDeleteTarget(null);
+      fetchData();
     } catch {
       toast.error(t('error'));
     }
@@ -226,23 +221,18 @@ export function PharmacyPage() {
       return;
     }
     try {
-      const res = await fetch('/api/pharmacy?action=prescription', {
+      await apiFetch('/api/pharmacy?action=prescription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           patientId: rxForm.patientId,
           doctorId: rxForm.doctorId || undefined,
           notes: rxForm.notes || undefined,
           items: rxItems,
-        }),
+        },
       });
-      if (res.ok) {
-        toast.success(t('saved'));
-        setRxDialogOpen(false);
-        fetchData();
-      } else {
-        toast.error(t('error'));
-      }
+      toast.success(t('saved'));
+      setRxDialogOpen(false);
+      fetchData();
     } catch {
       toast.error(t('error'));
     }
@@ -349,7 +339,7 @@ export function PharmacyPage() {
             </Button>
             <Button
               size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-primary hover:bg-primary/90"
               onClick={() => setDialogOpen(true)}
             >
               <Plus className="size-4" />
@@ -394,12 +384,19 @@ export function PharmacyPage() {
               <CalendarDays className="size-4" />
               <span className="hidden sm:inline">{t('expiry_alert')}</span>
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setScannerOpen(true)}
+            >
+              <ScanBarcode className="size-4" />
+              <span className="hidden sm:inline">{t('scan_medicine')}</span>
+            </Button>
           </motion.div>
 
           {/* Medicines Table */}
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
+          <CollapsiblePanel id="pharmacy-inventory" icon={Package} title={t('pharmacy')} badge={medicines.length}>
+              <div className="-mx-5 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
@@ -487,15 +484,13 @@ export function PharmacyPage() {
                   onAction={() => setDialogOpen(true)}
                 />
               )}
-            </CardContent>
-          </Card>
+          </CollapsiblePanel>
         </TabsContent>
 
         {/* Prescriptions Tab */}
         <TabsContent value="prescriptions" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
+          <CollapsiblePanel id="pharmacy-prescriptions" icon={FileText} title={t('prescriptions')} badge={prescriptions.length}>
+              <div className="-mx-5 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
@@ -544,8 +539,7 @@ export function PharmacyPage() {
                   onAction={() => setRxDialogOpen(true)}
                 />
               )}
-            </CardContent>
-          </Card>
+          </CollapsiblePanel>
         </TabsContent>
       </Tabs>
 
@@ -692,7 +686,7 @@ export function PharmacyPage() {
             </div>
             <Button
               onClick={handleSaveMedicine}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {t('save')}
             </Button>
@@ -977,7 +971,7 @@ export function PharmacyPage() {
             </div>
 
             <Button
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90"
               onClick={handleSaveRx}
             >
               {t('save_prescription')}
@@ -998,6 +992,25 @@ export function PharmacyPage() {
         description={t('are_you_sure_delete')}
         confirmLabel={t('delete')}
         variant="danger"
+      />
+
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(barcode) => {
+          setSearch(barcode);
+          setScannerOpen(false);
+          const found = medicines.find(
+            (m) => m.batchNumber === barcode || m.name.toLowerCase() === barcode.toLowerCase()
+          );
+          if (found) {
+            toast.success(`${found.name} (${found.batchNumber || '-'})`);
+          } else {
+            toast.warning(t('medicine_not_found'));
+          }
+        }}
+        title={t('scan_medicine')}
       />
     </motion.div>
   );

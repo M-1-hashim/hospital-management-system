@@ -99,12 +99,14 @@ function getStatusVariant(status: string): StatusVariant {
 
 interface StatusBadgeProps {
   status: string;
+  label?: string;
   className?: string;
   showDot?: boolean;
 }
 
 export function StatusBadge({
   status,
+  label,
   className,
   showDot = true,
 }: StatusBadgeProps) {
@@ -123,7 +125,7 @@ export function StatusBadge({
       {showDot && (
         <span className={cn('inline-block size-1.5 rounded-full', colors.dotColor)} />
       )}
-      {status}
+      {label || status}
     </Badge>
   );
 }

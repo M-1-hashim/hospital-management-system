@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import bcrypt from 'bcryptjs';
+import {
+  getSessionFromToken,
+  destroySession,
+  extractBearerToken,
+  startSessionCleanup,
+} from '@/lib/auth';
 
-// Simple in-memory session store (for demo purposes)
-const sessions = new Map<string, { userId: string; expiresAt: number }>();
+// Ensure cleanup timer is running
+startSessionCleanup();
 
-function generateSessionToken(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
-
-// Helper to get user from Authorization header
+// Helper to get full user from Authorization header
 async function getUserFromAuth(authHeader: string | null) {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.substring(7);
-  const session = sessions.get(token);
-  if (!session || session.expiresAt < Date.now()) {
-    sessions.delete(token);
-    return null;
-  }
+  const token = extractBearerToken(authHeader);
+  if (!token) return null;
+
+  const session = getSessionFromToken(token);
+  if (!session) return null;
+
   const user = await db.user.findUnique({
     where: { id: session.userId },
     select: {
@@ -36,7 +36,7 @@ async function getUserFromAuth(authHeader: string | null) {
   return user;
 }
 
-// POST /api/auth - Login
+// POST /api/auth — Logout (action=logout) or legacy login
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -44,89 +44,36 @@ export async function POST(request: NextRequest) {
 
     // Logout
     if (action === 'logout') {
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        sessions.delete(token);
+      const token = extractBearerToken(request.headers.get('Authorization'));
+      if (token) {
+        destroySession(token);
       }
-      return NextResponse.json({ message: 'Logged out successfully' });
+      return NextResponse.json({ success: true, message: 'Logged out successfully' });
     }
 
-    // Login
-    const body = await request.json();
-    const { username, password } = body;
-
-    if (!username || !password) {
-      return NextResponse.json(
-        { error: 'Username and password are required' },
-        { status: 400 }
-      );
-    }
-
-    const user = await db.user.findUnique({
-      where: { username },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
-    }
-
-    if (!user.isActive) {
-      return NextResponse.json(
-        { error: 'Account is deactivated' },
-        { status: 403 }
-      );
-    }
-
-    const isValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
-    }
-
-    // Update last login
-    await db.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() },
-    });
-
-    // Create session
-    const token = generateSessionToken();
-    sessions.set(token, {
-      userId: user.id,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-    });
-
-    const { passwordHash: _, ...userWithoutPassword } = user;
-
-    return NextResponse.json({
-      user: userWithoutPassword,
-      token,
-    });
+    // Legacy login — redirect to /api/auth/login
+    return NextResponse.json(
+      { error: 'Use /api/auth/login for authentication' },
+      { status: 400 },
+    );
   } catch (error) {
     console.error('Auth error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-// GET /api/auth/me - Get current user
+// GET /api/auth/me — Get current authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    const user = await getUserFromAuth(authHeader);
+    const user = await getUserFromAuth(request.headers.get('Authorization'));
 
     if (!user) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -135,9 +82,7 @@ export async function GET(request: NextRequest) {
     console.error('Auth me error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
-export { sessions };

@@ -23,6 +23,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ScanBarcode,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
@@ -62,7 +63,9 @@ import {
 } from '@/components/ui/table';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
+import { CollapsiblePanel } from '@/components/hms/shared/CollapsiblePanel';
 import { EmptyState } from '@/components/hms/shared/EmptyState';
+import { BarcodeScanner } from '@/components/hms/shared/BarcodeScanner';
 
 // ============================================================
 // Types
@@ -184,8 +187,8 @@ const bloodTypeColorMap: Record<string, string> = {
 function InfoItem({ icon: Icon, label, value, className }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode; className?: string }) {
   return (
     <div className={cn('flex items-center gap-3 rounded-lg border p-3', className)}>
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900/50">
-        <Icon className="size-4 text-teal-600 dark:text-teal-400" />
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+        <Icon className="size-4 text-primary" />
       </div>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
@@ -223,6 +226,9 @@ export default function PatientsPage() {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Barcode scanner
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   // Detail sub-data
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -464,8 +470,8 @@ export default function PatientsPage() {
         className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-teal-100 dark:bg-teal-900">
-            <Users className="size-5 text-teal-700 dark:text-teal-300" />
+          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+            <Users className="size-5 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t('patients')}</h1>
@@ -487,15 +493,23 @@ export default function PatientsPage() {
           </div>
           <Button
             variant="outline"
-            className="gap-2 border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 dark:hover:bg-teal-950"
+            className="gap-2 border-primary/20 text-primary hover:bg-primary/5 dark:hover:bg-primary/5"
             onClick={() => toast.info(t('import_excel_feature'))}
           >
             <FileSpreadsheet className="size-4" />
             <span className="hidden sm:inline">{t('import_excel')}</span>
           </Button>
           <Button
+            variant="outline"
+            className="gap-2 border-primary/20 text-primary hover:bg-primary/5 dark:hover:bg-primary/5"
+            onClick={() => setScannerOpen(true)}
+          >
+            <ScanBarcode className="size-4" />
+            <span className="hidden sm:inline">{t('scan_patient_id')}</span>
+          </Button>
+          <Button
             onClick={openCreateDialog}
-            className="gap-2 bg-teal-600 text-white hover:bg-teal-700"
+            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="size-4" />
             {t('add_patient')}
@@ -515,7 +529,7 @@ export default function PatientsPage() {
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="data-[state=active]:bg-teal-600 data-[state=active]:text-white"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 {tab.label}
               </TabsTrigger>
@@ -525,7 +539,8 @@ export default function PatientsPage() {
       </motion.div>
 
       {/* ====== Table ====== */}
-      <motion.div variants={itemVariants} className="overflow-hidden rounded-2xl border shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
+      <motion.div variants={itemVariants}>
+        <CollapsiblePanel id="patients-list" title={t('patients')} icon={Users} badge={pagination.total} className="border">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -584,7 +599,7 @@ export default function PatientsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="flex size-8 items-center justify-center rounded-full bg-teal-100 text-xs font-bold text-teal-700 dark:bg-teal-900 dark:text-teal-300">
+                        <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                           {patient.firstName[0]}
                           {patient.lastName[0]}
                         </div>
@@ -637,7 +652,7 @@ export default function PatientsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-8 text-teal-600 hover:bg-teal-50 hover:text-teal-700 dark:text-teal-400 dark:hover:bg-teal-950"
+                          className="size-8 text-primary hover:bg-primary/5 hover:text-primary dark:hover:bg-primary/5"
                           onClick={() => openDetailDialog(patient)}
                         >
                           <Eye className="size-4" />
@@ -666,6 +681,7 @@ export default function PatientsPage() {
             )}
           </TableBody>
         </Table>
+        </CollapsiblePanel>
       </motion.div>
 
       {/* ====== Pagination ====== */}
@@ -785,7 +801,7 @@ export default function PatientsPage() {
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-teal-700 dark:text-teal-300">
+            <DialogTitle className="flex items-center gap-2 text-primary">
               {editingPatient ? (
                 <>
                   <Pencil className="size-5" /> {t('edit_patient')}
@@ -1045,7 +1061,7 @@ export default function PatientsPage() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-teal-600 text-white hover:bg-teal-700"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {submitting && <Loader2 className="size-4 animate-spin me-2" />}
                 {editingPatient ? t('save_changes') : t('create_patient')}
@@ -1070,7 +1086,7 @@ export default function PatientsPage() {
             <>
               <DialogHeader>
                 <div className="flex items-center gap-4">
-                  <div className="flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-emerald-600 text-lg font-bold text-white shadow-lg">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground shadow-lg">
                     {selectedPatient.firstName[0]}
                     {selectedPatient.lastName[0]}
                   </div>
@@ -1240,8 +1256,8 @@ export default function PatientsPage() {
                           className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="flex size-9 items-center justify-center rounded-lg bg-teal-100 dark:bg-teal-900">
-                              <Calendar className="size-4 text-teal-600 dark:text-teal-400" />
+                            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+                              <Calendar className="size-4 text-primary" />
                             </div>
                             <div>
                               <p className="text-sm font-medium">
@@ -1362,6 +1378,25 @@ export default function PatientsPage() {
         confirmLabel={t('delete')}
         cancelLabel={t('cancel')}
         loading={deleting}
+      />
+
+      {/* ====== Barcode Scanner ====== */}
+      <BarcodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onScan={(barcode) => {
+          setSearchQuery(barcode);
+          setScannerOpen(false);
+          const found = patients.find(
+            (p) => p.fileNumber === barcode || p.nationalId === barcode || p.id === barcode
+          );
+          if (found) {
+            toast.success(`${found.firstName} ${found.lastName} (${found.fileNumber})`);
+          } else {
+            toast.warning(t('patient_not_found_barcode'));
+          }
+        }}
+        title={t('scan_patient_id')}
       />
     </motion.div>
   );

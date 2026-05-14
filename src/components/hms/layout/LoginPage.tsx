@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Eye, EyeOff, Loader2, Activity } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHospital } from '@fortawesome/free-solid-svg-icons';
 import { cn } from '@/lib/utils';
 import { useAuthStore, useLanguageStore, useNavStore, useThemeStore } from '@/store';
 import { Button } from '@/components/ui/button';
@@ -35,27 +37,24 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Left Panel - Branding */}
-      <div className="relative hidden w-1/2 overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 lg:flex lg:flex-col lg:items-center lg:justify-center">
+      <div className="relative hidden w-1/2 overflow-hidden bg-primary lg:flex lg:flex-col lg:items-center lg:justify-center">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute top-20 start-20 size-72 rounded-full bg-white/10 blur-3xl" />
           <div className="absolute bottom-20 end-20 size-96 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2">
-            <Activity className="size-[200px] text-white/[0.06]" strokeWidth={0.5} />
-          </div>
         </div>
         <div className="relative z-10 max-w-md px-8 text-center">
           <motion.div initial={{ scale: 0, rotate: -180 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 150 }}>
             <div className="mx-auto mb-8 flex size-20 items-center justify-center rounded-3xl bg-white/15 shadow-2xl backdrop-blur-sm ring-1 ring-white/20">
-              <Heart className="size-10 text-white" fill="white" fillOpacity={0.9} />
+              <FontAwesomeIcon icon={faHospital} className="size-10 text-white" />
             </div>
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="text-4xl font-bold leading-tight text-white">
             {isRTL ? 'سیستم مدیریت بیمارستان' : 'Hospital Management'}
           </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-4 text-lg text-emerald-100/80">
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="mt-4 text-lg text-primary-foreground/80">
             {isRTL ? 'پلتفرم جامع مدیریت بهداشت و درمان' : 'Comprehensive Healthcare Platform'}
           </motion.p>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-10 flex justify-center gap-8 text-emerald-100/60">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-10 flex justify-center gap-8 text-primary-foreground/60">
             {[{ num: '۲۰+', label: isRTL ? 'بخش' : 'Modules' }, { num: '۹۹٪', label: isRTL ? 'آپتایم' : 'Uptime' }, { num: '۲۴/۷', label: isRTL ? 'پشتیبانی' : 'Support' }].map((s, i) => (
               <div key={i} className="text-center"><p className="text-2xl font-bold text-white">{s.num}</p><p className="text-xs mt-0.5">{s.label}</p></div>
             ))}
@@ -75,8 +74,8 @@ export function LoginPage() {
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }}>
             {/* Logo for mobile */}
             <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600">
-                <Heart className="size-5 text-white" fill="white" fillOpacity={0.9} />
+              <div className="flex size-10 items-center justify-center rounded-xl bg-primary">
+                <FontAwesomeIcon icon={faHospital} className="size-5 text-white" />
               </div>
               <span className="text-lg font-bold">{isRTL ? 'بیمارستان' : 'HMS'}</span>
             </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useLanguageStore } from '@/store';
+import { apiFetch } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
+import { CollapsiblePanel } from '@/components/hms/shared/CollapsiblePanel';
 import { StatsCard } from '@/components/hms/shared/StatsCard';
 import { EmptyState } from '@/components/hms/shared/EmptyState';
 
@@ -76,12 +78,12 @@ export function DoctorsPage() {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (filterDept && filterDept !== 'all') params.set('departmentId', filterDept);
-    const res = await fetch(`/api/doctors?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      return Array.isArray(data.doctors) ? data.doctors : (Array.isArray(data) ? data : []);
+    try {
+      const data = await apiFetch(`/api/doctors?${params}`);
+      return Array.isArray((data as any)?.doctors) ? (data as any).doctors : (Array.isArray(data) ? data : []);
+    } catch {
+      return [];
     }
-    return [];
   }, [search, filterDept]);
 
   useEffect(() => {
@@ -89,8 +91,8 @@ export function DoctorsPage() {
     const load = async () => {
       const [docResult, deptResult] = await Promise.allSettled([
         fetchDoctors(),
-        fetch('/api/departments')
-          .then(async (r) => { if (!r.ok) return []; const d = await r.json(); return Array.isArray(d.departments) ? d.departments : (Array.isArray(d) ? d : []); })
+        apiFetch('/api/departments')
+          .then((d: any) => Array.isArray(d?.departments) ? d.departments : (Array.isArray(d) ? d : []))
           .catch(() => []),
       ]);
       if (!cancelled) {
@@ -121,20 +123,15 @@ export function DoctorsPage() {
       const isEdit = !!selectedDoctor;
       const url = isEdit ? `/api/doctors?id=${selectedDoctor.id}` : '/api/doctors';
       const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      await apiFetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, visitFee: Number(form.visitFee) || 0 }),
+        body: { ...form, visitFee: Number(form.visitFee) || 0 },
       });
-      if (res.ok) {
-        toast.success(isEdit ? t('saved') : t('added'));
-        setDialogOpen(false);
-        setSelectedDoctor(null);
-        resetForm();
-        fetchDoctors().then((data) => { if (data) setDoctors(data); });
-      } else {
-        toast.error(t('error'));
-      }
+      toast.success(isEdit ? t('saved') : t('added'));
+      setDialogOpen(false);
+      setSelectedDoctor(null);
+      resetForm();
+      fetchDoctors().then((data) => { if (data) setDoctors(data); });
     } catch {
       toast.error(t('error'));
     }
@@ -159,15 +156,11 @@ export function DoctorsPage() {
   const handleDelete = async () => {
     if (!selectedDoctor) return;
     try {
-      const res = await fetch(`/api/doctors?id=${selectedDoctor.id}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success(t('deleted'));
-        setDeleteOpen(false);
-        fetchDoctors().then((data) => { if (data) setDoctors(data); });
-        setSelectedDoctor(null);
-      } else {
-        toast.error(t('error'));
-      }
+      await apiFetch(`/api/doctors?id=${selectedDoctor.id}`, { method: 'DELETE' });
+      toast.success(t('deleted'));
+      setDeleteOpen(false);
+      fetchDoctors().then((data) => { if (data) setDoctors(data); });
+      setSelectedDoctor(null);
     } catch {
       toast.error(t('error'));
     }
@@ -259,7 +252,7 @@ export function DoctorsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Stethoscope className="text-emerald-600" />
+              <Stethoscope className="text-primary" />
               {t('doctors')}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -330,7 +323,7 @@ export function DoctorsPage() {
             }}
           >
             <DialogTrigger asChild>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
+              <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
                 <Plus className="size-4" />
                 {t('add')}
               </Button>
@@ -426,7 +419,7 @@ export function DoctorsPage() {
                 </div>
                 <Button
                   onClick={handleSave}
-                  className="bg-emerald-600 hover:bg-emerald-700 w-full"
+                  className="bg-primary hover:bg-primary/90 w-full"
                 >
                   {t('save')}
                 </Button>
@@ -436,6 +429,7 @@ export function DoctorsPage() {
         </div>
       </motion.div>
 
+      <CollapsiblePanel id="doctors-list" title={t('doctors')} icon={Stethoscope} badge={stats.total}>
       {/* ─── Grid View ─── */}
       {view === 'grid' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -450,8 +444,8 @@ export function DoctorsPage() {
               >
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">
-                    <Avatar className="size-14 shrink-0 bg-emerald-100 dark:bg-emerald-900">
-                      <AvatarFallback className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+                    <Avatar className="size-14 shrink-0 bg-primary/10">
+                      <AvatarFallback className="text-primary font-bold text-sm">
                         {getInitials(doc)}
                       </AvatarFallback>
                     </Avatar>
@@ -566,8 +560,8 @@ export function DoctorsPage() {
                       >
                         <td className="p-3">
                           <div className="flex items-center gap-3">
-                            <Avatar className="size-8 shrink-0 bg-emerald-100 dark:bg-emerald-900">
-                              <AvatarFallback className="text-emerald-700 dark:text-emerald-300 font-bold text-xs">
+                            <Avatar className="size-8 shrink-0 bg-primary/10">
+                              <AvatarFallback className="text-primary font-bold text-xs">
                                 {getInitials(doc)}
                               </AvatarFallback>
                             </Avatar>
@@ -647,6 +641,7 @@ export function DoctorsPage() {
           onAction={() => setDialogOpen(true)}
         />
       )}
+      </CollapsiblePanel>
 
       {/* ─── Profile Dialog ─── */}
       <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
@@ -655,8 +650,8 @@ export function DoctorsPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
-                  <Avatar className="size-10 bg-emerald-100 dark:bg-emerald-900 shrink-0">
-                    <AvatarFallback className="text-emerald-700 font-bold">
+                  <Avatar className="size-10 bg-primary/10 shrink-0">
+                    <AvatarFallback className="text-primary font-bold">
                       {getInitials(selectedDoctor)}
                     </AvatarFallback>
                   </Avatar>
@@ -729,7 +724,7 @@ export function DoctorsPage() {
                     },
                   ].map((s, i) => (
                     <Card key={i} className="p-3 text-center">
-                      <s.icon className="size-4 mx-auto mb-1 text-emerald-600" />
+                      <s.icon className="size-4 mx-auto mb-1 text-primary" />
                       <p className="text-xs text-muted-foreground">{s.label}</p>
                       <p className="font-bold text-sm">{s.value}</p>
                     </Card>

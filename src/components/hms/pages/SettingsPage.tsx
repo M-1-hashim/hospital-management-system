@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useLanguageStore } from '@/store';
+import { useLanguageStore, useThemeStore, type ColorTheme } from '@/store';
+import { ALL_THEMES } from '@/lib/themes';
+import { apiFetch } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,9 +35,14 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Palette,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
+import { BackupManager } from '@/components/hms/shared/BackupManager';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
 
@@ -95,6 +102,7 @@ function formatDate(dateStr?: string | null, isRTL: boolean) {
 
 export function SettingsPage() {
   const { t, isRTL } = useLanguageStore();
+  const { theme, toggleTheme, colorTheme, setColorTheme } = useThemeStore();
 
   /* ─── state ─── */
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -134,9 +142,9 @@ export function SettingsPage() {
     setLoading(true);
     try {
       const [depRes, userRes, setRes] = await Promise.allSettled([
-        fetch('/api/departments').then((r) => r.json()),
-        fetch('/api/users').then((r) => r.json()),
-        fetch('/api/settings').then((r) => r.json()),
+        apiFetch('/api/departments').catch(() => null),
+        apiFetch('/api/users').catch(() => null),
+        apiFetch('/api/settings').catch(() => null),
       ]);
 
       if (depRes.status === 'fulfilled' && depRes.value) {
@@ -174,17 +182,12 @@ export function SettingsPage() {
   const saveHospitalInfo = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/settings', {
+      await apiFetch('/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(hospForm),
+        body: hospForm,
       });
-      if (res.ok) {
-        toast.success(t('hospital_info_saved'));
-        fetchData();
-      } else {
-        toast.error(t('error'));
-      }
+      toast.success(t('hospital_info_saved'));
+      fetchData();
     } catch {
       toast.error(t('error'));
     } finally {
@@ -196,18 +199,15 @@ export function SettingsPage() {
   const saveDept = async () => {
     try {
       const isEdit = !!selectedDept;
-      const res = await fetch(isEdit ? `/api/departments?id=${selectedDept!.id}` : '/api/departments', {
+      await apiFetch(isEdit ? `/api/departments?id=${selectedDept!.id}` : '/api/departments', {
         method: isEdit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...deptForm, floor: Number(deptForm.floor) || 0 }),
+        body: { ...deptForm, floor: Number(deptForm.floor) || 0 },
       });
-      if (res.ok) {
-        toast.success(t('saved'));
-        setDeptDialogOpen(false);
-        setSelectedDept(null);
-        setDeptForm({ name: '', nameFa: '', floor: '', phone: '', description: '' });
-        fetchData();
-      } else toast.error(t('error'));
+      toast.success(t('saved'));
+      setDeptDialogOpen(false);
+      setSelectedDept(null);
+      setDeptForm({ name: '', nameFa: '', floor: '', phone: '', description: '' });
+      fetchData();
     } catch {
       toast.error(t('error'));
     }
@@ -227,9 +227,8 @@ export function SettingsPage() {
   const deleteDept = async () => {
     if (!targetDeptId) return;
     try {
-      const res = await fetch(`/api/departments?id=${targetDeptId}`, { method: 'DELETE' });
-      if (res.ok) { toast.success(t('deleted')); fetchData(); }
-      else toast.error(t('error'));
+      await apiFetch(`/api/departments?id=${targetDeptId}`, { method: 'DELETE' });
+      toast.success(t('deleted')); fetchData();
     } catch { toast.error(t('error')); }
   };
 
@@ -247,19 +246,13 @@ export function SettingsPage() {
     }
     setUserSaving(true);
     try {
-      const res = await fetch('/api/users', {
+      await apiFetch('/api/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userForm),
+        body: userForm,
       });
-      if (res.ok) {
-        toast.success(t('user_created'));
-        setUserDialogOpen(false);
-        fetchData();
-      } else {
-        const err = await res.json();
-        toast.error(err.error || t('error'));
-      }
+      toast.success(t('user_created'));
+      setUserDialogOpen(false);
+      fetchData();
     } catch {
       toast.error(t('error'));
     } finally {
@@ -275,11 +268,9 @@ export function SettingsPage() {
   const deactivateUser = async () => {
     if (!targetUserId) return;
     try {
-      const res = await fetch(`/api/users?id=${targetUserId}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast.success(t('deactivate_user'));
-        fetchData();
-      } else toast.error(t('error'));
+      await apiFetch(`/api/users?id=${targetUserId}`, { method: 'DELETE' });
+      toast.success(t('deactivate_user'));
+      fetchData();
     } catch { toast.error(t('error')); }
   };
 
@@ -306,7 +297,7 @@ export function SettingsPage() {
     >
       {/* ─── Header ─── */}
       <motion.div variants={fadeUp} className="flex items-center gap-2">
-        <Settings className="size-5 text-emerald-600" />
+        <Settings className="size-5 text-primary" />
         <h1 className="text-xl font-bold">{t('settings')}</h1>
       </motion.div>
 
@@ -323,6 +314,9 @@ export function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="backup">
             <Database className="size-4" />{t('backup_label')}
+          </TabsTrigger>
+          <TabsTrigger value="appearance">
+            <Palette className="size-4" />{t('appearance_label')}
           </TabsTrigger>
         </TabsList>
 
@@ -377,7 +371,7 @@ export function SettingsPage() {
                       />
                     </div>
                   </div>
-                  <Button onClick={saveHospitalInfo} className="bg-emerald-600 hover:bg-emerald-700" disabled={saving}>
+                  <Button onClick={saveHospitalInfo} className="bg-primary hover:bg-primary/90" disabled={saving}>
                     {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                     {t('save')}
                   </Button>
@@ -392,7 +386,7 @@ export function SettingsPage() {
           {/* FIX #11: Add Department button — flex-wrap ensures accessibility on small screens */}
           <div className="flex justify-end">
             <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-primary hover:bg-primary/90"
               onClick={() => { setSelectedDept(null); setDeptForm({ name: '', nameFa: '', floor: '', phone: '', description: '' }); setDeptDialogOpen(true); }}
             >
               <Plus className="size-4" />{t('add')}
@@ -515,7 +509,7 @@ export function SettingsPage() {
                   </Badge>
                 )}
               </h3>
-              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={openAddUser}>
+              <Button className="bg-primary hover:bg-primary/90" onClick={openAddUser}>
                 <Plus className="size-4" />{t('add_user')}
               </Button>
             </div>
@@ -567,7 +561,7 @@ export function SettingsPage() {
                               <td className="p-3 text-muted-foreground">{u.phone || '-'}</td>
                               <td className="p-3">
                                 {u.isActive ? (
-                                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium">
+                                  <span className="inline-flex items-center gap-1 text-primary text-xs font-medium">
                                     <CheckCircle2 className="size-3.5" />
                                     {t('active_label')}
                                   </span>
@@ -614,25 +608,122 @@ export function SettingsPage() {
 
         {/* ═══════════ BACKUP TAB ═══════════ */}
         <TabsContent value="backup" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('backup_restore')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-4 p-4 border-2 border-dashed rounded-lg border-amber-300 dark:border-amber-700">
-                <RefreshCw className="size-6 text-amber-600 mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <h4 className="font-medium">{t('reset_database')}</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('reset_database_warning')}
-                  </p>
-                  <Button variant="destructive" className="mt-3" onClick={() => setSeedOpen(true)}>
-                    <Database className="size-4" />{t('reset_database_btn')}
-                  </Button>
+          <BackupManager />
+        </TabsContent>
+
+        {/* ═══════════ APPEARANCE TAB ═══════════ */}
+        <TabsContent value="appearance" className="space-y-6 mt-4">
+          {/* Light / Dark Toggle */}
+          <motion.div variants={fadeUp}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {theme === 'light' ? <Sun className="size-5 text-amber-500" /> : <Moon className="size-5 text-indigo-400" />}
+                  {t('mode_label')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => { if (theme !== 'light') toggleTheme(); }}
+                    className={cn(
+                      'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all flex-1 max-w-[160px]',
+                      theme === 'light'
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-transparent bg-muted/50 hover:bg-muted',
+                    )}
+                  >
+                    <Sun className={cn('size-6', theme === 'light' ? 'text-amber-500' : 'text-muted-foreground')} />
+                    <span className={cn('text-sm font-medium', theme === 'light' ? 'text-foreground' : 'text-muted-foreground')}>
+                      {t('light')}
+                    </span>
+                    {theme === 'light' && (
+                      <CheckCircle2 className="size-4 text-primary" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { if (theme !== 'dark') toggleTheme(); }}
+                    className={cn(
+                      'flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all flex-1 max-w-[160px]',
+                      theme === 'dark'
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-transparent bg-muted/50 hover:bg-muted',
+                    )}
+                  >
+                    <Moon className={cn('size-6', theme === 'dark' ? 'text-indigo-400' : 'text-muted-foreground')} />
+                    <span className={cn('text-sm font-medium', theme === 'dark' ? 'text-foreground' : 'text-muted-foreground')}>
+                      {t('dark')}
+                    </span>
+                    {theme === 'dark' && (
+                      <CheckCircle2 className="size-4 text-primary" />
+                    )}
+                  </button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Color Theme Selector */}
+          <motion.div variants={fadeUp}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="size-5 text-primary" />
+                  {t('color_theme_label')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {t('color_theme_desc')}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+                  {ALL_THEMES.map((th) => {
+                    const isActive = colorTheme === th.id;
+                    return (
+                      <button
+                        key={th.id}
+                        onClick={() => setColorTheme(th.id as ColorTheme)}
+                        className={cn(
+                          'group relative flex flex-col items-center gap-2.5 rounded-xl border-2 p-4 transition-all hover:shadow-md cursor-pointer',
+                          isActive
+                            ? 'border-primary bg-primary/5 shadow-sm'
+                            : 'border-transparent bg-muted/50 hover:bg-muted hover:border-border/50',
+                        )}
+                      >
+                        {/* Active check */}
+                        {isActive && (
+                          <div className={cn('absolute top-2 end-2 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground')}>
+                            <svg className="size-3" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </div>
+                        )}
+
+                        {/* Color swatches */}
+                        <div className="flex gap-1.5">
+                          {th.swatches.map((color, i) => (
+                            <span
+                              key={i}
+                              className="size-8 rounded-lg shadow-sm ring-1 ring-black/10 transition-transform group-hover:scale-110"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Theme name */}
+                        <span className={cn(
+                          'text-xs font-medium transition-colors',
+                          isActive ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+                        )}>
+                          {isRTL ? th.labelFa : th.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </TabsContent>
       </Tabs>
 
@@ -670,7 +761,7 @@ export function SettingsPage() {
               <Label>{isRTL ? 'توضیحات' : 'Description'}</Label>
               <Textarea value={deptForm.description} onChange={(e) => setDeptForm({ ...deptForm, description: e.target.value })} />
             </div>
-            <Button onClick={saveDept} className="w-full bg-emerald-600 hover:bg-emerald-700">{t('save')}</Button>
+            <Button onClick={saveDept} className="w-full bg-primary hover:bg-primary/90">{t('save')}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -766,7 +857,7 @@ export function SettingsPage() {
             </div>
             <Button
               onClick={saveUser}
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              className="w-full bg-primary hover:bg-primary/90"
               disabled={userSaving}
             >
               {userSaving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}

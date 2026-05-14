@@ -1,10 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/wards - List beds with filters
+// GET /api/wards - List beds with filters or get bed history
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action') || '';
+
+    // ── Bed History Action ──
+    if (action === 'bedHistory') {
+      const bedId = searchParams.get('bedId');
+      if (!bedId) {
+        return NextResponse.json({ error: 'bedId is required' }, { status: 400 });
+      }
+
+      const admissions = await db.admission.findMany({
+        where: { bedId },
+        include: {
+          patient: { select: { id: true, firstName: true, lastName: true, fileNumber: true } },
+          doctor: { select: { id: true, firstName: true, lastName: true } },
+        },
+        orderBy: { admitDate: 'desc' },
+      });
+
+      return NextResponse.json(admissions);
+    }
+
+    // ── Default: List beds ──
     const departmentId = searchParams.get('departmentId') || '';
     const status = searchParams.get('status') || '';
 
@@ -69,15 +91,98 @@ export async function POST(request: NextRequest) {
 }
 
 // PUT /api/wards?id=xxx - Update bed status
+// PUT /api/wards?action=transfer - Transfer patient between beds (bedId → targetBedId)
 export async function PUT(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action') || '';
     const id = searchParams.get('id');
 
+    // ── Transfer Action (via bedId + targetBedId) ──
+    if (action === 'transfer') {
+      const body = await request.json();
+      const { bedId, targetBedId } = body as { bedId?: string; targetBedId?: string };
+
+      if (!bedId || !targetBedId) {
+        return NextResponse.json(
+          { error: 'bedId and targetBedId are required for transfer' },
+          { status: 400 },
+        );
+      }
+
+      if (bedId === targetBedId) {
+        return NextResponse.json(
+          { error: 'Source and target bed cannot be the same' },
+          { status: 400 },
+        );
+      }
+
+      // Find active admission for the source bed
+      const activeAdmission = await db.admission.findFirst({
+        where: { bedId, status: 'active' },
+      });
+
+      if (!activeAdmission) {
+        return NextResponse.json(
+          { error: 'No active admission found on the source bed' },
+          { status: 404 },
+        );
+      }
+
+      // Check target bed availability
+      const targetBed = await db.bed.findUnique({
+        where: { id: targetBedId },
+      });
+
+      if (!targetBed || targetBed.status !== 'available') {
+        return NextResponse.json(
+          { error: 'Target bed is not available' },
+          { status: 400 },
+        );
+      }
+
+      const oldBedId = bedId;
+
+      // Update admission: move to new bed
+      const updatedAdmission = await db.admission.update({
+        where: { id: activeAdmission.id },
+        data: {
+          bedId: targetBedId,
+          status: 'transferred',
+          notes: [
+            activeAdmission.notes || '',
+            `Transfer: ${new Date().toISOString()} — Bed ${oldBedId} → Bed ${targetBedId}`,
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        },
+        include: {
+          patient: { select: { id: true, firstName: true, lastName: true, fileNumber: true } },
+          bed: { include: { department: true } },
+          doctor: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      // Free up old bed
+      await db.bed.update({
+        where: { id: oldBedId },
+        data: { status: 'cleaning' },
+      });
+
+      // Occupy new bed
+      await db.bed.update({
+        where: { id: targetBedId },
+        data: { status: 'occupied' },
+      });
+
+      return NextResponse.json({ admission: updatedAdmission });
+    }
+
+    // ── Default: Update bed fields ──
     if (!id) {
       return NextResponse.json(
         { error: 'Bed ID is required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -103,7 +208,7 @@ export async function PUT(request: NextRequest) {
     console.error('Wards PUT error:', error);
     return NextResponse.json(
       { error: 'Failed to update bed' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

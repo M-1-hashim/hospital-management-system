@@ -105,7 +105,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
                         isRTL && 'flex-row-reverse text-right'
                       )}
                     >
-                      <Icon className="size-4 shrink-0 text-emerald-600" />
+                      <Icon className="size-4 shrink-0 text-primary" />
                       <span className="flex-1">{t(item.key)}</span>
                     </CommandItem>
                   );

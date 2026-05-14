@@ -27,6 +27,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { StatusBadge } from '@/components/hms/shared/StatusBadge';
 import { EmptyState } from '@/components/hms/shared/EmptyState';
 import { ConfirmDialog } from '@/components/hms/shared/ConfirmDialog';
+import { CollapsiblePanel } from '@/components/hms/shared/CollapsiblePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -134,7 +135,12 @@ function getMonthNames(isRTL: boolean): string[] {
   );
 }
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function getWeekdayLabels(isRTL: boolean): string[] {
+  const locale = isRTL ? 'fa-IR' : 'en-US';
+  return Array.from({ length: 7 }, (_, i) =>
+    new Date(2024, 0, i + 1).toLocaleDateString(locale, { weekday: 'short' })
+  );
+}
 
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate();
@@ -174,6 +180,7 @@ const itemVariants = {
 export default function AppointmentsPage() {
   const { t, isRTL } = useLanguageStore();
   const monthNames = getMonthNames(isRTL);
+  const weekdayLabels = getWeekdayLabels(isRTL);
 
   // ── State ──────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -262,10 +269,13 @@ export default function AppointmentsPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((a) => {
-        const patientName = a.patient
+        const pName = a.patient
           ? `${a.patient.firstName} ${a.patient.lastName}`.toLowerCase()
           : '';
-        return patientName.includes(q) || a.id.toLowerCase().includes(q);
+        const dName = a.doctor
+          ? `${a.doctor.firstName} ${a.doctor.lastName}`.toLowerCase()
+          : '';
+        return pName.includes(q) || dName.includes(q) || a.id.toLowerCase().includes(q);
       });
     }
 
@@ -327,7 +337,7 @@ export default function AppointmentsPage() {
 
   const handleCreateAppointment = async () => {
     if (!formPatientId || !formDoctorId || !formDate || !formTime) {
-      toast.error('Please fill all required fields');
+      toast.error(t('fill_required_fields'));
       return;
     }
     try {
@@ -454,11 +464,11 @@ export default function AppointmentsPage() {
           onClick={() => setSelectedDay(day === selectedDay ? null : day)}
           className={cn(
             'relative h-20 sm:h-24 rounded-lg border p-1.5 text-start transition-all duration-200',
-            'hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20',
+            'hover:border-primary/30 hover:bg-primary/5 dark:hover:bg-primary/5',
             isSelected
-              ? 'border-emerald-500 bg-emerald-50 shadow-sm ring-1 ring-emerald-500/30 dark:bg-emerald-950/30'
+              ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/30 dark:bg-primary/5'
               : isToday
-                ? 'border-emerald-400 bg-emerald-50/80 dark:bg-emerald-950/20'
+                ? 'border-primary bg-primary/5 dark:bg-primary/5'
                 : 'border-border bg-card',
             isSunday && 'bg-red-50/40 dark:bg-red-950/10'
           )}
@@ -466,8 +476,8 @@ export default function AppointmentsPage() {
           <span
             className={cn(
               'text-sm font-medium',
-              isToday && 'flex size-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs',
-              isSelected && !isToday && 'text-emerald-700 dark:text-emerald-300'
+              isToday && 'flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs',
+              isSelected && !isToday && 'text-primary'
             )}
           >
             {day}
@@ -533,7 +543,7 @@ export default function AppointmentsPage() {
               onClick={() => setViewMode('list')}
               className={cn(
                 'gap-1.5 text-xs',
-                viewMode === 'list' && 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                viewMode === 'list' && 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm'
               )}
             >
               <List className="size-3.5" />
@@ -545,7 +555,7 @@ export default function AppointmentsPage() {
               onClick={() => setViewMode('calendar')}
               className={cn(
                 'gap-1.5 text-xs',
-                viewMode === 'calendar' && 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                viewMode === 'calendar' && 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm'
               )}
             >
               <CalendarDays className="size-3.5" />
@@ -556,7 +566,7 @@ export default function AppointmentsPage() {
           {/* Add Button */}
           <Button
             onClick={() => setAddDialogOpen(true)}
-            className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5"
           >
             <Plus className="size-4" />
             <span className="hidden sm:inline">{t('book_appointment')}</span>
@@ -574,20 +584,8 @@ export default function AppointmentsPage() {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Card className="border-emerald-200 dark:border-emerald-800">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-emerald-800 dark:text-emerald-300">
-                    <Clock className="size-4" />
-                    {t('waiting_list')} ({todayQueue.length})
-                  </CardTitle>
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
-                    {t('pending')}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="max-h-48">
+            <CollapsiblePanel id="appointments-today-queue" title={t('waiting_list')} icon={Clock} badge={todayQueue.length} className="border border-primary/20">
+              <ScrollArea className="max-h-48">
                   <div className="flex flex-col gap-2">
                     {todayQueue.map((appt, idx) => (
                       <motion.div
@@ -596,10 +594,10 @@ export default function AppointmentsPage() {
                         initial="hidden"
                         animate="visible"
                         transition={{ delay: idx * 0.04 }}
-                        className="flex items-center justify-between rounded-lg bg-white dark:bg-gray-900 border p-3 gap-3"
+                        className="flex items-center justify-between rounded-lg bg-card border p-3 gap-3"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold dark:bg-emerald-900 dark:text-emerald-300">
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
                             {idx + 1}
                           </span>
                           <div className="min-w-0">
@@ -616,7 +614,7 @@ export default function AppointmentsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            className="h-7 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/5"
                             onClick={() => handleStatusChange(appt.id, 'confirmed')}
                             disabled={actionLoading}
                           >
@@ -636,15 +634,15 @@ export default function AppointmentsPage() {
                       </motion.div>
                     ))}
                   </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+              </ScrollArea>
+            </CollapsiblePanel>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Calendar View ──────────────────────────────────── */}
       {viewMode === 'calendar' && (
+        <CollapsiblePanel id="appointments-calendar" title={t('calendar')} icon={CalendarDays}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -680,7 +678,7 @@ export default function AppointmentsPage() {
               <CardContent>
                 {/* Weekday Headers */}
                 <div className="grid grid-cols-7 gap-1 mb-1">
-                  {WEEKDAY_LABELS.map((label, i) => (
+                  {weekdayLabels.map((label, i) => (
                     <div
                       key={label}
                       className={cn(
@@ -765,10 +763,10 @@ export default function AppointmentsPage() {
                         >
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1.5 text-sm font-medium">
-                              <Clock className="size-3.5 text-emerald-600" />
+                              <Clock className="size-3.5 text-primary" />
                               {appt.time}
                             </span>
-                            <StatusBadge status={getStatusLabel(appt.status)} />
+                            <StatusBadge status={appt.status} label={getStatusLabel(appt.status)} />
                           </div>
                           <div className="space-y-1">
                             <p className="text-sm font-medium">{patientName(appt.patient)}</p>
@@ -791,10 +789,12 @@ export default function AppointmentsPage() {
             </Card>
           </div>
         </motion.div>
+        </CollapsiblePanel>
       )}
 
       {/* ── List View ───────────────────────────────────────── */}
       {viewMode === 'list' && (
+        <CollapsiblePanel id="appointments-list" title={t('all')} icon={List}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -887,12 +887,7 @@ export default function AppointmentsPage() {
                         <TableHead className="text-xs font-semibold text-end">{t('actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
-                      <motion.tbody
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                      >
+                    <tbody>
                         {filteredAppointments.map((appt) => (
                           <motion.tr
                             key={appt.id}
@@ -904,7 +899,7 @@ export default function AppointmentsPage() {
                             </TableCell>
                             <TableCell className="text-sm py-3">
                               <span className="flex items-center gap-1.5">
-                                <Clock className="size-3 text-emerald-600" />
+                                <Clock className="size-3 text-primary" />
                                 {appt.time}
                               </span>
                             </TableCell>
@@ -923,7 +918,7 @@ export default function AppointmentsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-sm py-3">
-                              <StatusBadge status={getStatusLabel(appt.status)} />
+                              <StatusBadge status={appt.status} label={getStatusLabel(appt.status)} />
                             </TableCell>
                             <TableCell className="text-sm py-3 text-end">
                               <DropdownMenu>
@@ -936,7 +931,7 @@ export default function AppointmentsPage() {
                                   {appt.status === 'pending' && (
                                     <DropdownMenuItem
                                       onClick={() => handleStatusChange(appt.id, 'confirmed')}
-                                      className="text-emerald-600 gap-2"
+                                      className="text-primary gap-2"
                                     >
                                       <CheckCircle2 className="size-3.5" />
                                       {t('confirm')}
@@ -979,22 +974,22 @@ export default function AppointmentsPage() {
                             </TableCell>
                           </motion.tr>
                         ))}
-                      </motion.tbody>
-                    </TableBody>
+                    </tbody>
                   </Table>
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
+        </CollapsiblePanel>
       )}
 
-      {/* ── Add Appointment Dialog ─────────────────────────── */}
+      {/* ── Add Appointment Dialog ──────────────────────────── */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-lg" dir={isRTL ? 'rtl' : 'ltr'}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <Plus className="size-5 text-emerald-600" />
+              <Plus className="size-5 text-primary" />
               {t('book_appointment')}
             </DialogTitle>
             <DialogDescription>
@@ -1026,12 +1021,12 @@ export default function AppointmentsPage() {
             {/* Doctor Select */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                Doctor <span className="text-red-500">*</span>
+                {t('doctor_label')} <span className="text-red-500">*</span>
               </Label>
               <Select value={formDoctorId} onValueChange={setFormDoctorId}>
                 <SelectTrigger className="w-full">
                   <Stethoscope className="size-4 me-2 text-muted-foreground" />
-                  <SelectValue placeholder="Select doctor..." />
+                  <SelectValue placeholder={t('select_doctor_label')} />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
                   {activeDoctors.map((d) => (
@@ -1120,7 +1115,7 @@ export default function AppointmentsPage() {
             <Button
               onClick={handleCreateAppointment}
               disabled={formLoading}
-              className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5"
             >
               {formLoading ? (
                 <Loader2 className="size-4 animate-spin" />

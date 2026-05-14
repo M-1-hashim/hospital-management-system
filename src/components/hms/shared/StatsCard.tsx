@@ -19,11 +19,11 @@ interface StatsCardProps {
 }
 
 const colorMap: Record<CardColor, { iconBg: string; iconText: string; trendUp: string; trendDown: string }> = {
-  green: { iconBg: 'from-emerald-400 to-teal-500', iconText: 'text-white', trendUp: 'text-emerald-600 dark:text-emerald-400', trendDown: 'text-red-500' },
-  blue: { iconBg: 'from-sky-400 to-blue-500', iconText: 'text-white', trendUp: 'text-emerald-600 dark:text-emerald-400', trendDown: 'text-red-500' },
-  red: { iconBg: 'from-rose-400 to-red-500', iconText: 'text-white', trendUp: 'text-emerald-600', trendDown: 'text-red-500' },
-  amber: { iconBg: 'from-amber-400 to-orange-500', iconText: 'text-white', trendUp: 'text-emerald-600', trendDown: 'text-red-500' },
-  purple: { iconBg: 'from-violet-400 to-purple-500', iconText: 'text-white', trendUp: 'text-emerald-600', trendDown: 'text-red-500' },
+  green: { iconBg: 'bg-primary', iconText: 'text-primary-foreground', trendUp: 'text-primary', trendDown: 'text-red-500' },
+  blue: { iconBg: 'bg-primary', iconText: 'text-primary-foreground', trendUp: 'text-primary', trendDown: 'text-red-500' },
+  red: { iconBg: 'bg-primary', iconText: 'text-primary-foreground', trendUp: 'text-primary', trendDown: 'text-red-500' },
+  amber: { iconBg: 'bg-primary', iconText: 'text-primary-foreground', trendUp: 'text-primary', trendDown: 'text-red-500' },
+  purple: { iconBg: 'bg-primary', iconText: 'text-primary-foreground', trendUp: 'text-primary', trendDown: 'text-red-500' },
 };
 
 export function StatsCard({ title, value, icon: Icon, trend = 'neutral', trendValue, color = 'green', index = 0 }: StatsCardProps) {
@@ -45,7 +45,7 @@ export function StatsCard({ title, value, icon: Icon, trend = 'neutral', trendVa
               </div>
             )}
           </div>
-          <div className={cn('flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg', colors.iconBg)}>
+          <div className={cn('flex size-12 items-center justify-center rounded-2xl shadow-lg', colors.iconBg)}>
             <Icon className={cn('size-5', colors.iconText)} />
           </div>
         </div>

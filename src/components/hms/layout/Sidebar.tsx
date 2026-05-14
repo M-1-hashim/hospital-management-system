@@ -1,9 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Users, Stethoscope, CalendarDays, Receipt, Pill, FlaskConical, BedDouble, UserCog, BarChart3, Settings, Globe, Sun, Moon, Heart } from 'lucide-react';
+import { LayoutDashboard, Users, Stethoscope, CalendarDays, ListOrdered, Receipt, Pill, FlaskConical, BedDouble, UserCog, BarChart3, Settings, Globe, Sun, Moon, Shield, Heart } from 'lucide-react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHospital } from '@fortawesome/free-solid-svg-icons';
 import { cn } from '@/lib/utils';
 import { useNavStore, useLanguageStore, useThemeStore, useAuthStore } from '@/store';
+import { THEME_MAP } from '@/lib/themes';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -18,20 +21,24 @@ const navItems: NavItem[] = [
   { key: 'patients', icon: Users },
   { key: 'doctors', icon: Stethoscope },
   { key: 'appointments', icon: CalendarDays },
+  { key: 'queue', icon: ListOrdered },
   { key: 'billing', icon: Receipt },
   { key: 'pharmacy', icon: Pill },
   { key: 'laboratory', icon: FlaskConical },
+  { key: 'medical_records', icon: Heart },
   { key: 'wards', icon: BedDouble },
   { key: 'staff', icon: UserCog },
   { key: 'reports', icon: BarChart3 },
+  { key: 'audit_log', icon: Shield },
   { key: 'settings', icon: Settings },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { currentPage, setCurrentPage } = useNavStore();
   const { t, isRTL, locale, setLocale } = useLanguageStore();
-  const { theme, toggleTheme } = useThemeStore();
+  const { theme, toggleTheme, colorTheme } = useThemeStore();
   const { user } = useAuthStore();
+  const currentTheme = THEME_MAP.get(colorTheme);
 
   const handleNavClick = (key: string) => { setCurrentPage(key); onNavigate?.(); };
 
@@ -39,8 +46,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-6">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/20">
-          <Heart className="size-5 text-white" fill="white" fillOpacity={0.9} />
+        <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl shadow-lg bg-gradient-to-br', currentTheme ? [currentTheme.logoGradient, 'shadow-primary/20'] : ['bg-primary', 'shadow-primary/20'])}>
+          <FontAwesomeIcon icon={faHospital} className="size-5 text-white" />
         </div>
         <div className="flex flex-col overflow-hidden">
           <span className="truncate text-sm font-bold text-sidebar-foreground">{isRTL ? 'بیمارستان' : 'HMS'}</span>
