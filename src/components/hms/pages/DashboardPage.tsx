@@ -98,7 +98,11 @@ interface QueueEntry {
 
 const PIE_COLORS = ['#10b981', '#06b6d4', '#f59e0b', '#a855f7', '#ec4899', '#ef4444', '#6366f1'];
 
-const AREA_COLOR = 'hsl(var(--primary))';
+// Chart colors — MUST be direct hex, NOT hsl(var(...)) because --primary resolves
+// to oklch(...) in Tailwind CSS 4 and SVG attributes cannot parse hsl(oklch(...)).
+const AREA_COLOR = '#0d9488';
+const GRID_COLOR = '#e2e8f0';
+const AXIS_COLOR = '#94a3b8';
 
 // ============================================================
 // Animation Variants
@@ -177,12 +181,14 @@ function fallbackStats(): DashboardStats {
 function fallbackWeeklyData(): WeeklyDay[] {
   const now = new Date();
   const days: WeeklyDay[] = [];
+  // Stable demo values (NOT random — random changes every 30s refresh)
+  const demoCounts = [6, 8, 5, 11, 9, 7, 12];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
     days.push({
       day: d.toLocaleDateString('en', { weekday: 'short' }),
       date: d.toISOString().split('T')[0],
-      count: Math.floor(Math.random() * 12) + 4,
+      count: demoCounts[6 - i],
     });
   }
   return days;
@@ -451,15 +457,15 @@ export default function DashboardPage() {
                       <stop offset="95%" stopColor={AREA_COLOR} stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
                   <XAxis
                     dataKey="day"
-                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 12, fill: AXIS_COLOR }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                    tick={{ fontSize: 12, fill: AXIS_COLOR }}
                     axisLine={false}
                     tickLine={false}
                     width={30}
