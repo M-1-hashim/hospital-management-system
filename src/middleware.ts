@@ -23,46 +23,11 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Validate the Authorization header
-    const authHeader = request.headers.get('Authorization');
-    const token = extractBearerToken(authHeader);
-
-    if (!token) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Authentication required',
-          code: 'MISSING_TOKEN',
-        },
-        { status: 401 },
-      );
-    }
-
-    const session = getSessionFromToken(token);
-    if (!session) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid or expired token',
-          code: 'INVALID_TOKEN',
-        },
-        { status: 401 },
-      );
-    }
-
-    // Valid session — allow the request through.
-    // We also forward user info as custom headers so downstream
-    // API routes can read them without re-querying the session store.
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-id', session.userId);
-    requestHeaders.set('x-user-role', session.role);
-    requestHeaders.set('x-user-username', session.username);
-
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    // In Next.js 16 Turbopack, the in-memory sessionStore is NOT shared
+    // between middleware (Edge Runtime) and API routes (Node.js).
+    // Therefore we skip middleware auth for API routes and let each
+    // API route validate the token directly.
+    return NextResponse.next();
   }
 
   // For page routes (/), allow through — SPA handles auth client-side

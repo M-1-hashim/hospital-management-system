@@ -68,19 +68,11 @@ export async function apiFetch<T = unknown>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  // Handle 401 — token may have expired
-  if (response.status === 401) {
-    // Attempt to re-validate the session; if it fails, force logout
-    const store = useAuthStore.getState();
-    if (store.isAuthenticated) {
-      // Clear session on client side — the SPA will redirect to login
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('hms-auth-token');
-        localStorage.removeItem('hms-auth-user');
-      }
-      useAuthStore.setState({ user: null, isAuthenticated: false, token: null });
-    }
-  }
+  // NOTE: We do NOT auto-logout on 401 here.
+  // The in-memory session store is not shared between middleware (Edge)
+  // and API routes (Node.js) in Next.js 16 Turbopack, so middleware
+  // may return 401 even with a valid token. Let callers handle 401
+  // gracefully (e.g. dashboard uses fallback data).
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
