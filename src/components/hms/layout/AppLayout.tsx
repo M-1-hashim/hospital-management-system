@@ -19,6 +19,8 @@ import { StaffPage } from '@/components/hms/pages/StaffPage';
 import { ReportsPage } from '@/components/hms/pages/ReportsPage';
 import { SettingsPage } from '@/components/hms/pages/SettingsPage';
 import MedicalRecordsPage from '@/components/hms/pages/MedicalRecordsPage';
+import QueuePage from '@/components/hms/pages/QueuePage';
+import { AuditLogPage } from '@/components/hms/pages/AuditLogPage';
 import { Toaster } from 'sonner';
 
 const PAGE_MAP: Record<string, React.ComponentType> = {
@@ -34,6 +36,8 @@ const PAGE_MAP: Record<string, React.ComponentType> = {
   reports: ReportsPage,
   settings: SettingsPage,
   medical_records: MedicalRecordsPage,
+  queue: QueuePage,
+  audit_log: AuditLogPage,
 };
 
 export function AppLayout() {

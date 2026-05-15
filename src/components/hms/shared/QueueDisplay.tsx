@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Megaphone, CheckCircle2, Users, ChevronRight } from 'lucide-react';
+import { Megaphone, CheckCircle2, Users, ChevronRight, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,8 @@ interface QueueDisplayProps {
   totalWaiting: number;
   onCallNext: (queueNumber: number) => void;
   onComplete: () => void;
+  announcing?: boolean;
+  departmentFa?: string;
 }
 
 // ============================================================
@@ -47,8 +49,12 @@ export function QueueDisplay({
   totalWaiting,
   onCallNext,
   onComplete,
+  announcing = false,
+  departmentFa = department,
 }: QueueDisplayProps) {
-  const { t } = useLanguageStore();
+  const { t, isRTL } = useLanguageStore();
+
+  const displayDept = isRTL ? departmentFa : department;
 
   return (
     <div className="flex flex-col gap-5 rounded-2xl bg-card p-6 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
@@ -58,7 +64,7 @@ export function QueueDisplay({
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
             <Users className="size-4 text-primary" />
           </div>
-          <span className="text-sm font-semibold text-foreground">{department}</span>
+          <span className="text-sm font-semibold text-foreground">{displayDept}</span>
         </div>
         <Badge variant="secondary" className="gap-1 text-xs">
           <span className="relative flex size-2">
@@ -101,6 +107,17 @@ export function QueueDisplay({
                 <Badge variant="destructive" className="mt-1 text-[10px] px-1.5 py-0">
                   {t('priority_emergency')}
                 </Badge>
+              )}
+              {/* Announcing indicator */}
+              {announcing && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-2 flex items-center gap-1.5 text-xs text-primary"
+                >
+                  <Volume2 className="size-3.5 animate-pulse" />
+                  <span>{isRTL ? 'در حال اعلام...' : 'Announcing...'}</span>
+                </motion.div>
               )}
             </motion.div>
           ) : (

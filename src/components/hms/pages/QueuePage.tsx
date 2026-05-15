@@ -14,6 +14,7 @@ import {
   Volume2,
   VolumeX,
   Clock,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ import { useLanguageStore } from '@/store';
 import { apiFetch } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { playNotificationSound } from '@/lib/notification-sound';
+import { announcePatient, stopAnnouncement, isAnnouncing } from '@/lib/voice-announce';
 
 // ============================================================
 // Types
@@ -46,6 +48,15 @@ interface Department {
 // ============================================================
 
 const DEPARTMENTS = ['General', 'Emergency', 'Internal Medicine', 'Surgery', 'Pediatrics', 'OB/GYN'];
+
+const DEPARTMENT_FA: Record<string, string> = {
+  'General': 'عمومی',
+  'Emergency': 'اورژانس',
+  'Internal Medicine': 'داخلی',
+  'Surgery': 'جراحی',
+  'Pediatrics': 'اطفال',
+  'OB/GYN': 'زنان و زایمان',
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -69,8 +80,9 @@ const itemVariants = {
 // ============================================================
 
 export default function QueuePage() {
-  const { t, isRTL } = useLanguageStore();
+  const { t, isRTL, locale } = useLanguageStore();
   const soundEnabledRef = useRef(true);
+  const voiceEnabledRef = useRef(true);
 
   const [queues, setQueues] = useState<QueueEntry[]>([]);
   const [selectedDept, setSelectedDept] = useState('General');
@@ -81,6 +93,8 @@ export default function QueuePage() {
   const [walkInName, setWalkInName] = useState('');
   const [walkInPriority, setWalkInPriority] = useState<'normal' | 'urgent' | 'emergency'>('normal');
   const [submitting, setSubmitting] = useState(false);
+  const [calling, setCalling] = useState(false);
+  const [announcing, setAnnouncing] = useState(false);
 
   // ── Fetch Queues ──────────────────────────────────────────
 
@@ -128,9 +142,31 @@ export default function QueuePage() {
   const currentServing = calledQueues.length > 0 ? calledQueues[0] : null;
   const nextInLine = waitingQueues.slice(0, 3);
 
+  // ── Voice Announcement Helper ─────────────────────────────
+
+  const speakQueueNumber = useCallback((entry: QueueEntry) => {
+    if (!voiceEnabledRef.current) return;
+    setAnnouncing(true);
+
+    announcePatient({
+      queueNumber: entry.queueNumber,
+      patientName: entry.patientName,
+      department: selectedDept,
+      locale: locale === 'fa' ? 'fa' : 'en',
+      repeatCount: 2,
+      speed: locale === 'fa' ? 0.85 : 0.95,
+      volume: 1,
+    }).then(() => {
+      setAnnouncing(false);
+    }).catch(() => {
+      setAnnouncing(false);
+    });
+  }, [selectedDept, locale]);
+
   // ── Handlers ──────────────────────────────────────────────
 
   const handleCallNext = useCallback(async () => {
+    setCalling(true);
     try {
       const called = await apiFetch<{ queue: QueueEntry }>('/api/queue', {
         method: 'PUT',
@@ -143,15 +179,34 @@ export default function QueuePage() {
         if (soundEnabledRef.current) {
           playNotificationSound('appointment');
         }
+        // Voice announcement
+        speakQueueNumber(called.queue);
       }
       fetchQueues();
     } catch (error) {
       toast.error(t('error'));
+    } finally {
+      setCalling(false);
     }
-  }, [currentServing, fetchQueues, t]);
+  }, [currentServing, fetchQueues, t, speakQueueNumber]);
+
+  const handleRecall = useCallback(() => {
+    if (!currentServing) return;
+    if (soundEnabledRef.current) {
+      playNotificationSound('appointment');
+    }
+    speakQueueNumber(currentServing);
+  }, [currentServing, speakQueueNumber]);
+
+  const handleStopAnnouncement = useCallback(() => {
+    stopAnnouncement();
+    setAnnouncing(false);
+    toast.info(isRTL ? 'صدای اعلان متوقف شد' : 'Announcement stopped');
+  }, [isRTL]);
 
   const handleComplete = useCallback(async () => {
     if (!currentServing) return;
+    stopAnnouncement();
     try {
       await apiFetch('/api/queue', {
         method: 'PUT',
@@ -237,17 +292,47 @@ export default function QueuePage() {
             <p className="mt-0.5 text-sm text-muted-foreground">{t('queue_display')}</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Sound Toggle */}
             <Button
               variant="outline"
               size="icon"
               onClick={() => {
                 soundEnabledRef.current = !soundEnabledRef.current;
-                toast.info(soundEnabledRef.current ? 'Sound enabled' : 'Sound muted');
+                toast.info(soundEnabledRef.current
+                  ? (isRTL ? 'صدای اعلان روشن شد' : 'Sound enabled')
+                  : (isRTL ? 'صدای اعلان خاموش شد' : 'Sound muted')
+                );
               }}
-              title={soundEnabledRef.current ? 'Mute sound' : 'Enable sound'}
+              title={soundEnabledRef.current
+                ? (isRTL ? 'قطع صدا' : 'Mute sound')
+                : (isRTL ? 'وصل صدا' : 'Enable sound')
+              }
             >
               {soundEnabledRef.current ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
             </Button>
+            {/* Voice Announcement Toggle */}
+            <Button
+              variant="outline"
+              size="icon"
+              className={cn(
+                'gap-1',
+                voiceEnabledRef.current && 'border-primary text-primary bg-primary/10'
+              )}
+              onClick={() => {
+                voiceEnabledRef.current = !voiceEnabledRef.current;
+                toast.info(voiceEnabledRef.current
+                  ? (isRTL ? 'صدای بلند فعال شد' : 'Voice announcement enabled')
+                  : (isRTL ? 'صدای بلند غیرفعال شد' : 'Voice announcement disabled')
+                );
+              }}
+              title={voiceEnabledRef.current
+                ? (isRTL ? 'خاموش کردن صدای فارسی' : 'Disable voice')
+                : (isRTL ? 'فعال کردن صدای فارسی' : 'Enable voice')
+              }
+            >
+              <Megaphone className="size-4" />
+            </Button>
+            {/* Walk-in Patient */}
             <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setWalkInOpen(true)}>
               <UserPlus className="size-4" />
               {t('walk_in_patient')}
@@ -270,9 +355,59 @@ export default function QueuePage() {
                 selectedDept === dept && 'bg-primary text-primary-foreground hover:bg-primary/90',
               )}
             >
-              {dept}
+              {isRTL ? (DEPARTMENT_FA[dept] || dept) : dept}
             </Button>
           ))}
+        </div>
+      </motion.div>
+
+      {/* ── Stats Cards ───────────────────────────────────── */}
+      <motion.div variants={itemVariants}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-950/50">
+                <Clock className="size-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{waitingQueues.length}</p>
+                <p className="text-xs text-muted-foreground">{isRTL ? 'در انتظار' : 'Waiting'}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-950/50">
+                <Megaphone className="size-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{calledQueues.length}</p>
+                <p className="text-xs text-muted-foreground">{isRTL ? 'فراخوانی شده' : 'Called'}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-950/50">
+                <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{completedQueues.length}</p>
+                <p className="text-xs text-muted-foreground">{isRTL ? 'تکمیل شده' : 'Completed'}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-950/50">
+                <ListOrdered className="size-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{queues.length}</p>
+                <p className="text-xs text-muted-foreground">{isRTL ? 'مجموع' : 'Total'}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </motion.div>
 
@@ -287,7 +422,36 @@ export default function QueuePage() {
             totalWaiting={waitingQueues.length}
             onCallNext={handleCallNext}
             onComplete={handleComplete}
+            announcing={announcing}
+            departmentFa={DEPARTMENT_FA[selectedDept] || selectedDept}
           />
+
+          {/* Recall / Stop Announcement Buttons */}
+          {currentServing && (
+            <div className="mt-3 flex gap-2">
+              <Button
+                variant="outline"
+                className={cn(
+                  'flex-1 gap-2 text-sm',
+                  announcing && 'animate-pulse border-primary text-primary'
+                )}
+                onClick={announcing ? handleStopAnnouncement : handleRecall}
+                disabled={calling}
+              >
+                {announcing ? (
+                  <>
+                    <VolumeX className="size-4" />
+                    {isRTL ? 'توقف' : 'Stop'}
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="size-4" />
+                    {isRTL ? 'دوباره صدا بزن' : 'Recall'}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </motion.div>
 
         {/* Right: Patient List */}
@@ -350,7 +514,10 @@ export default function QueuePage() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, x: -20 }}
                           transition={{ duration: 0.2 }}
-                          className="border-b transition-colors hover:bg-muted/50 last:border-b-0"
+                          className={cn(
+                            'border-b transition-colors hover:bg-muted/50 last:border-b-0',
+                            entry.status === 'called' && 'bg-primary/5 border-l-4 border-l-primary'
+                          )}
                         >
                           <td className="px-3 py-3">
                             <Badge variant="outline" className="font-mono text-xs">
@@ -359,6 +526,14 @@ export default function QueuePage() {
                           </td>
                           <td className="px-3 py-3">
                             <span className="font-medium text-foreground">{entry.patientName}</span>
+                            {entry.status === 'called' && (
+                              <span className="ml-2 inline-flex items-center gap-1">
+                                <Megaphone className="size-3 text-primary animate-pulse" />
+                                <span className="text-[10px] text-primary font-medium">
+                                  {isRTL ? 'فراخوانی' : 'CALLED'}
+                                </span>
+                              </span>
+                            )}
                           </td>
                           <td className="hidden px-3 py-3 sm:table-cell">
                             <PriorityBadge priority={entry.priority} />
@@ -369,15 +544,26 @@ export default function QueuePage() {
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-1">
                               {entry.status === 'called' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-7 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-                                  onClick={() => handleComplete()}
-                                  title={t('completed')}
-                                >
-                                  <CheckCircle2 className="size-3.5" />
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                    onClick={() => handleComplete()}
+                                    title={t('completed')}
+                                  >
+                                    <CheckCircle2 className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                    onClick={() => speakQueueNumber(entry)}
+                                    title={isRTL ? 'صدا زدن' : 'Announce'}
+                                  >
+                                    <Megaphone className="size-3.5" />
+                                  </Button>
+                                </>
                               )}
                               <Button
                                 variant="ghost"
@@ -431,7 +617,9 @@ export default function QueuePage() {
               <div className="w-full max-w-md rounded-2xl bg-background p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <div className="mb-5">
                   <h2 className="text-lg font-semibold text-foreground">{t('walk_in_patient')}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{selectedDept}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {isRTL ? DEPARTMENT_FA[selectedDept] : selectedDept}
+                  </p>
                 </div>
 
                 <div className="space-y-4">
