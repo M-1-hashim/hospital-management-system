@@ -89,6 +89,7 @@ interface QueueEntry {
   priority: string;
   status: string;
   department: string;
+  calledAt?: string | null;
 }
 
 // ============================================================
@@ -318,7 +319,7 @@ export default function DashboardPage() {
           revenueToday: d.revenue?.today ?? 0,
           bedsAvailable: d.beds?.available ?? 0,
           pendingLabTests: d.labTests?.pending ?? 0,
-          queueWaiting: results[5].status === 'fulfilled' ? (results[5].value.queues?.length ?? 0) : 0,
+          queueWaiting: results[5].status === 'fulfilled' ? (results[5].value.queues?.filter((q: QueueEntry) => q.status === 'waiting').length ?? 0) : 0,
         });
       } else {
         setStats(fallbackStats());
@@ -609,68 +610,98 @@ export default function DashboardPage() {
       {/* ── Queue Widget ────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
         <CollapsiblePanel id="dash-queue-widget" title={t('waiting_queue')} icon={ListOrdered} badge={queueEntries.filter((q) => q.status === 'waiting').length.toString()}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              {/* Current serving — called patient */}
-              {(() => {
-                const currentServing = queueEntries.find((q) => q.status === 'called');
-                return (
-                  <div className="flex flex-col items-center rounded-2xl bg-primary/10 px-6 py-4">
-                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('current_serving')}</span>
-                    {currentServing ? (
-                      <>
-                        <span className="mt-1 text-3xl font-bold text-primary">
-                          {String(currentServing.queueNumber).padStart(3, '0')}
-                        </span>
-                        <span className="mt-0.5 text-xs text-muted-foreground">{currentServing.patientName}</span>
-                      </>
+          <div className="space-y-4">
+            {/* ── Called Patients (Currently Serving) ──────────── */}
+            {(() => {
+              const calledPatients = queueEntries.filter((q) => q.status === 'called');
+              const waitingPatients = queueEntries.filter((q) => q.status === 'waiting');
+
+              return (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Left column: Called patients */}
+                  <div className="sm:col-span-1">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('current_serving')}</span>
+                    {calledPatients.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        {calledPatients.map((cp) => (
+                          <div key={cp.id} className="flex flex-col items-center rounded-2xl bg-primary/10 px-5 py-4">
+                            <span className="text-3xl font-bold text-primary">
+                              {String(cp.queueNumber).padStart(3, '0')}
+                            </span>
+                            <span className="mt-0.5 text-sm font-medium text-foreground">{cp.patientName}</span>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <Badge variant="secondary" className="text-[10px]">{cp.department}</Badge>
+                              {cp.calledAt && (
+                                <span className="text-[10px] text-muted-foreground">{timeAgo(cp.calledAt)}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
-                      <span className="mt-1 text-3xl font-bold text-muted-foreground/40">—</span>
+                      <div className="flex flex-col items-center justify-center rounded-2xl bg-muted/30 px-5 py-6">
+                        <span className="text-3xl font-bold text-muted-foreground/40">—</span>
+                        <span className="mt-1 text-xs text-muted-foreground">{t('no_patients_in_queue')}</span>
+                      </div>
                     )}
                   </div>
-                );
-              })()}
 
-              {/* Next 3 in line — waiting patients only */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('next')}</span>
-                {(() => {
-                  const waiting = queueEntries.filter((q) => q.status === 'waiting').slice(0, 3);
-                  return waiting.length > 0 ? (
-                    waiting.map((entry) => (
-                      <div key={entry.id} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
-                        <Badge variant="outline" className="bg-background font-mono text-xs">{entry.queueNumber}</Badge>
-                        <span className="text-sm text-foreground">{entry.patientName}</span>
-                        {entry.priority === 'urgent' && (
-                          <Badge variant="destructive" className="text-[10px] px-1 py-0">!</Badge>
-                        )}
-                        {entry.priority === 'emergency' && (
-                          <Badge variant="destructive" className="text-[10px] px-1 py-0">!!</Badge>
+                  {/* Middle column: Next in line (waiting) */}
+                  <div className="sm:col-span-1">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('next')}</span>
+                    {waitingPatients.length > 0 ? (
+                      <div className="flex flex-col gap-1.5">
+                        {waitingPatients.slice(0, 5).map((entry) => (
+                          <div key={entry.id} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
+                            <Badge variant="outline" className="bg-background font-mono text-xs">{entry.queueNumber}</Badge>
+                            <span className="flex-1 truncate text-sm text-foreground">{entry.patientName}</span>
+                            <Badge variant="secondary" className="text-[10px] shrink-0">{entry.department}</Badge>
+                            {entry.priority === 'urgent' && (
+                              <Badge variant="destructive" className="text-[10px] px-1 py-0 shrink-0">!</Badge>
+                            )}
+                            {entry.priority === 'emergency' && (
+                              <Badge variant="destructive" className="text-[10px] px-1 py-0 shrink-0">!!</Badge>
+                            )}
+                          </div>
+                        ))}
+                        {waitingPatients.length > 5 && (
+                          <span className="text-xs text-muted-foreground text-center pt-1">
+                            +{waitingPatients.length - 5} {isRTL ? 'بیمار دیگر' : 'more'}
+                          </span>
                         )}
                       </div>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted-foreground">{t('no_patients_in_queue')}</span>
-                  );
-                })()}
-              </div>
-            </div>
+                    ) : (
+                      <div className="flex items-center justify-center rounded-xl bg-muted/30 px-4 py-8">
+                        <span className="text-sm text-muted-foreground">{t('no_patients_in_queue')}</span>
+                      </div>
+                    )}
+                  </div>
 
-            <div className="flex items-center gap-3">
-              <div className="text-center">
-                <span className="block text-2xl font-bold text-foreground">{queueEntries.filter((q) => q.status === 'waiting').length}</span>
-                <span className="text-xs text-muted-foreground">{t('waiting_queue').toLowerCase()}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => useNavStore.getState().setCurrentPage('queue')}
-              >
-                <ArrowUpRight className="size-3.5" />
-                {t('queue')}
-              </Button>
-            </div>
+                  {/* Right column: Stats + Navigate */}
+                  <div className="sm:col-span-1 flex flex-col items-center justify-center gap-4">
+                    <div className="text-center">
+                      <span className="block text-4xl font-bold text-foreground">{waitingPatients.length}</span>
+                      <span className="text-sm text-muted-foreground">{isRTL ? 'در صف انتظار' : t('waiting_queue').toLowerCase()}</span>
+                    </div>
+                    {calledPatients.length > 0 && (
+                      <div className="text-center">
+                        <span className="block text-2xl font-bold text-primary">{calledPatients.length}</span>
+                        <span className="text-sm text-muted-foreground">{isRTL ? 'در حال خدمت' : 'serving'}</span>
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => useNavStore.getState().setCurrentPage('queue')}
+                    >
+                      <ArrowUpRight className="size-3.5" />
+                      {t('queue')}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </CollapsiblePanel>
       </motion.div>

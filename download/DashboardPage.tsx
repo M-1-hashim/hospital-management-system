@@ -16,6 +16,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import {
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -87,6 +89,7 @@ interface QueueEntry {
   priority: string;
   status: string;
   department: string;
+  calledAt?: string | null;
 }
 
 // ============================================================
@@ -95,15 +98,7 @@ interface QueueEntry {
 
 const PIE_COLORS = ['#10b981', '#06b6d4', '#f59e0b', '#a855f7', '#ec4899', '#ef4444', '#6366f1'];
 
-// Direct colors for SVG compatibility — CSS variables like oklch()
-// don't work reliably inside SVG attributes in all browsers.
-const AREA_STROKE = '#059669';     // emerald-600 — matches oklch(0.55 0.15 163)
-const AREA_FILL_START = 'rgba(5, 150, 105, 0.30)';
-const AREA_FILL_END = 'rgba(5, 150, 105, 0.02)';
-const AREA_DOT_FILL = '#059669';
-const GRID_STROKE = '#e2e8f0';     // slate-200 — matches oklch(0.91 0.005 247)
-const AXIS_FILL = '#64748b';       // slate-500 — matches oklch(0.5 0.02 261)
-const AXIS_FONT_SIZE = 12;
+const AREA_COLOR = 'hsl(var(--primary))';
 
 // ============================================================
 // Animation Variants
@@ -301,8 +296,6 @@ export default function DashboardPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  // Force chart re-render after panel animation completes
-  const [chartKey, setChartKey] = useState(0);
 
   // ── Data Fetching ─────────────────────────────────────────
 
@@ -314,7 +307,7 @@ export default function DashboardPage() {
         apiGet<{ distribution: DepartmentDistItem[] }>('/api/reports?type=departmentDist'),
         apiGet<{ topDoctors: TopDoctor[] }>('/api/reports?type=topDoctors'),
         apiGet<{ logs: AuditLogEntry[] }>('/api/audit-logs?limit=10'),
-        apiGet<{ queues: QueueEntry[] }>('/api/queue?status=waiting'),
+        apiGet<{ queues: QueueEntry[] }>('/api/queue'),
       ]);
 
       // Stats
@@ -326,7 +319,7 @@ export default function DashboardPage() {
           revenueToday: d.revenue?.today ?? 0,
           bedsAvailable: d.beds?.available ?? 0,
           pendingLabTests: d.labTests?.pending ?? 0,
-          queueWaiting: results[5].status === 'fulfilled' ? (results[5].value.queues?.length ?? 0) : 0,
+          queueWaiting: results[5].status === 'fulfilled' ? (results[5].value.queues?.filter((q: QueueEntry) => q.status === 'waiting').length ?? 0) : 0,
         });
       } else {
         setStats(fallbackStats());
@@ -361,9 +354,17 @@ export default function DashboardPage() {
         setAuditLogs(fallbackAuditLogs());
       }
 
-      // Queue
+      // Queue — show called + waiting entries
       if (results[5].status === 'fulfilled' && results[5].value.queues?.length) {
-        setQueueEntries(results[5].value.queues);
+        const allQueues = results[5].value.queues;
+        const called = allQueues.filter((q) => q.status === 'called');
+        const waiting = allQueues.filter((q) => q.status === 'waiting');
+        // Put called first, then waiting
+        setQueueEntries([...called, ...waiting]);
+        // Update stats with real waiting count
+        if (results[0].status === 'fulfilled') {
+          setStats((prev) => prev ? { ...prev, queueWaiting: allQueues.filter((q) => q.status === 'waiting').length } : prev);
+        }
       } else {
         setQueueEntries(fallbackQueue());
       }
@@ -386,13 +387,6 @@ export default function DashboardPage() {
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
-
-  // Force chart re-render after panel animation (300ms) to ensure
-  // ResponsiveContainer gets correct dimensions
-  useEffect(() => {
-    const timer = setTimeout(() => setChartKey((k) => k + 1), 350);
-    return () => clearTimeout(timer);
-  }, []);
 
   // ── Greeting ──────────────────────────────────────────────
 
@@ -450,22 +444,22 @@ export default function DashboardPage() {
           <CollapsiblePanel id="dash-weekly-visits" title={t('weekly_trend')} icon={TrendingUp} badge={t('live_stats')}>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={weeklyData} key={`weekly-${chartKey}`}>
+                <AreaChart data={weeklyData}>
                   <defs>
                     <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={AREA_STROKE} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={AREA_STROKE} stopOpacity={0.02} />
+                      <stop offset="5%" stopColor={AREA_COLOR} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={AREA_COLOR} stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis
                     dataKey="day"
-                    tick={{ fontSize: AXIS_FONT_SIZE, fill: AXIS_FILL }}
+                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: AXIS_FONT_SIZE, fill: AXIS_FILL }}
+                    tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                     axisLine={false}
                     tickLine={false}
                     width={30}
@@ -474,11 +468,11 @@ export default function DashboardPage() {
                   <Area
                     type="monotone"
                     dataKey="count"
-                    stroke={AREA_STROKE}
+                    stroke={AREA_COLOR}
                     strokeWidth={2.5}
                     fill="url(#colorVisits)"
-                    dot={{ fill: AREA_DOT_FILL, r: 4, strokeWidth: 0 }}
-                    activeDot={{ r: 6, fill: AREA_DOT_FILL, stroke: '#fff', strokeWidth: 2 }}
+                    dot={{ fill: AREA_COLOR, r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: AREA_COLOR, stroke: '#fff', strokeWidth: 2 }}
                     name="Visits"
                   />
                 </AreaChart>
@@ -492,7 +486,7 @@ export default function DashboardPage() {
           <CollapsiblePanel id="dash-dept-dist" title={t('department_distribution')} icon={Activity}>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart key={`pie-${chartKey}`}>
+                <PieChart>
                   <Pie
                     data={deptDist}
                     cx="50%"
@@ -615,45 +609,99 @@ export default function DashboardPage() {
 
       {/* ── Queue Widget ────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
-        <CollapsiblePanel id="dash-queue-widget" title={t('waiting_queue')} icon={ListOrdered} badge={queueEntries.length.toString()}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              {/* Current serving */}
-              <div className="flex flex-col items-center rounded-2xl bg-primary/10 px-6 py-4">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('current_serving')}</span>
-                <span className="mt-1 text-3xl font-bold text-primary">
-                  {queueEntries.length > 0 ? queueEntries[0].queueNumber : '—'}
-                </span>
-                {queueEntries.length > 0 && (
-                  <span className="mt-0.5 text-xs text-muted-foreground">{queueEntries[0].patientName}</span>
-                )}
-              </div>
+        <CollapsiblePanel id="dash-queue-widget" title={t('waiting_queue')} icon={ListOrdered} badge={queueEntries.filter((q) => q.status === 'waiting').length.toString()}>
+          <div className="space-y-4">
+            {/* ── Called Patients (Currently Serving) ──────────── */}
+            {(() => {
+              const calledPatients = queueEntries.filter((q) => q.status === 'called');
+              const waitingPatients = queueEntries.filter((q) => q.status === 'waiting');
 
-              {/* Next 3 in line */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('next')}</span>
-                {queueEntries.slice(1, 4).length > 0 ? (
-                  queueEntries.slice(1, 4).map((entry) => (
-                    <div key={entry.id} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
-                      <Badge variant="outline" className="bg-background font-mono text-xs">{entry.queueNumber}</Badge>
-                      <span className="text-sm text-foreground">{entry.patientName}</span>
-                      {entry.priority === 'urgent' && (
-                        <Badge variant="destructive" className="text-[10px] px-1 py-0">!</Badge>
-                      )}
+              return (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Left column: Called patients */}
+                  <div className="sm:col-span-1">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('current_serving')}</span>
+                    {calledPatients.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        {calledPatients.map((cp) => (
+                          <div key={cp.id} className="flex flex-col items-center rounded-2xl bg-primary/10 px-5 py-4">
+                            <span className="text-3xl font-bold text-primary">
+                              {String(cp.queueNumber).padStart(3, '0')}
+                            </span>
+                            <span className="mt-0.5 text-sm font-medium text-foreground">{cp.patientName}</span>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <Badge variant="secondary" className="text-[10px]">{cp.department}</Badge>
+                              {cp.calledAt && (
+                                <span className="text-[10px] text-muted-foreground">{timeAgo(cp.calledAt)}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center rounded-2xl bg-muted/30 px-5 py-6">
+                        <span className="text-3xl font-bold text-muted-foreground/40">—</span>
+                        <span className="mt-1 text-xs text-muted-foreground">{t('no_patients_in_queue')}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Middle column: Next in line (waiting) */}
+                  <div className="sm:col-span-1">
+                    <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('next')}</span>
+                    {waitingPatients.length > 0 ? (
+                      <div className="flex flex-col gap-1.5">
+                        {waitingPatients.slice(0, 5).map((entry) => (
+                          <div key={entry.id} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
+                            <Badge variant="outline" className="bg-background font-mono text-xs">{entry.queueNumber}</Badge>
+                            <span className="flex-1 truncate text-sm text-foreground">{entry.patientName}</span>
+                            <Badge variant="secondary" className="text-[10px] shrink-0">{entry.department}</Badge>
+                            {entry.priority === 'urgent' && (
+                              <Badge variant="destructive" className="text-[10px] px-1 py-0 shrink-0">!</Badge>
+                            )}
+                            {entry.priority === 'emergency' && (
+                              <Badge variant="destructive" className="text-[10px] px-1 py-0 shrink-0">!!</Badge>
+                            )}
+                          </div>
+                        ))}
+                        {waitingPatients.length > 5 && (
+                          <span className="text-xs text-muted-foreground text-center pt-1">
+                            +{waitingPatients.length - 5} {isRTL ? 'بیمار دیگر' : 'more'}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center rounded-xl bg-muted/30 px-4 py-8">
+                        <span className="text-sm text-muted-foreground">{t('no_patients_in_queue')}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right column: Stats + Navigate */}
+                  <div className="sm:col-span-1 flex flex-col items-center justify-center gap-4">
+                    <div className="text-center">
+                      <span className="block text-4xl font-bold text-foreground">{waitingPatients.length}</span>
+                      <span className="text-sm text-muted-foreground">{isRTL ? 'در صف انتظار' : t('waiting_queue').toLowerCase()}</span>
                     </div>
-                  ))
-                ) : (
-                  <span className="text-sm text-muted-foreground">{t('no_patients_in_queue')}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="text-center">
-                <span className="block text-2xl font-bold text-foreground">{queueEntries.length}</span>
-                <span className="text-xs text-muted-foreground">{t('waiting_queue').toLowerCase()}</span>
-              </div>
-            </div>
+                    {calledPatients.length > 0 && (
+                      <div className="text-center">
+                        <span className="block text-2xl font-bold text-primary">{calledPatients.length}</span>
+                        <span className="text-sm text-muted-foreground">{isRTL ? 'در حال خدمت' : 'serving'}</span>
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => useNavStore.getState().setCurrentPage('queue')}
+                    >
+                      <ArrowUpRight className="size-3.5" />
+                      {t('queue')}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </CollapsiblePanel>
       </motion.div>
