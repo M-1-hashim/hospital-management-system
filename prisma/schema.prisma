@@ -115,6 +115,9 @@ model Doctor {
   email           String?
   departmentId    String?
   visitFee        Float    @default(0)
+  salary          Float    @default(0)
+  contractType    String   @default("fulltime") // fulltime, parttime, contract
+  hireDate        DateTime?
   workingHours    String?  // JSON
   bio             String?
   rating          Float    @default(0)
@@ -129,6 +132,7 @@ model Doctor {
   labTests        LabTest[]
   admissions      Admission[]
   visitRecords    VisitRecord[]
+  payrolls        Payroll[]
 
   @@map("doctors")
 }
@@ -599,6 +603,29 @@ model Notification {
 
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+// ====== DOCTOR PAYROLL / SALARY ======
+model Payroll {
+  id            String   @id @default(cuid())
+  doctorId      String
+  month         Int      // 1-12
+  year          Int
+  baseSalary    Float    @default(0)
+  overtime      Float    @default(0)
+  bonus         Float    @default(0)
+  deduction     Float    @default(0)
+  totalPaid     Float    @default(0)
+  status        String   @default("pending") // pending, paid
+  paidDate      DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  doctor        Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, month, year])
+  @@map("payrolls")
 }
 
 // ====== BACKUP TRACKING ======

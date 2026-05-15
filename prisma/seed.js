@@ -60,17 +60,24 @@ async function main() {
   // ===== Doctors =====
   // licenseNumber is NOT @unique, use findFirst + create
   const doctorsData = [
-    { firstName: 'احمد', lastName: 'رحیمی', specialty: 'Cardiology', department: 'Cardiology', licenseNumber: 'MED-001', fee: 500, phone: '+93710000001' },
-    { firstName: 'محمد', lastName: 'نوری', specialty: 'Neurology', department: 'Neurology', licenseNumber: 'MED-002', fee: 600, phone: '+93710000002' },
-    { firstName: 'زرما', lastName: 'هاتف', specialty: 'Pediatrics', department: 'Pediatrics', licenseNumber: 'MED-003', fee: 400, phone: '+93710000003' },
-    { firstName: 'حمید', lastName: 'رضایی', specialty: 'Surgery', department: 'Surgery', licenseNumber: 'MED-004', fee: 800, phone: '+93710000004' },
-    { firstName: 'لیلا', lastName: 'احمدی', specialty: 'Gynecology', department: 'Gynecology', licenseNumber: 'MED-005', fee: 550, phone: '+93710000005' },
+    { firstName: 'احمد', lastName: 'رحیمی', specialty: 'Cardiology', department: 'Cardiology', licenseNumber: 'MED-001', fee: 500, salary: 80000, contract: 'fulltime', username: 'doctor', phone: '+93710000001' },
+    { firstName: 'محمد', lastName: 'نوری', specialty: 'Neurology', department: 'Neurology', licenseNumber: 'MED-002', fee: 600, salary: 90000, contract: 'fulltime', username: null, phone: '+93710000002' },
+    { firstName: 'زرما', lastName: 'هاتف', specialty: 'Pediatrics', department: 'Pediatrics', licenseNumber: 'MED-003', fee: 400, salary: 65000, contract: 'fulltime', username: null, phone: '+93710000003' },
+    { firstName: 'حمید', lastName: 'رضایی', specialty: 'Surgery', department: 'Surgery', licenseNumber: 'MED-004', fee: 800, salary: 120000, contract: 'fulltime', username: null, phone: '+93710000004' },
+    { firstName: 'لیلا', lastName: 'احمدی', specialty: 'Gynecology', department: 'Gynecology', licenseNumber: 'MED-005', fee: 550, salary: 75000, contract: 'parttime', username: null, phone: '+93710000005' },
   ];
 
+  const doctorIdMap = {};
   for (const d of doctorsData) {
     const existing = await prisma.doctor.findFirst({ where: { licenseNumber: d.licenseNumber } });
     if (!existing) {
-      await prisma.doctor.create({
+      // Link doctor to user if username provided
+      let userId = null;
+      if (d.username) {
+        const u = await prisma.user.findFirst({ where: { username: d.username } });
+        if (u) userId = u.id;
+      }
+      const created = await prisma.doctor.create({
         data: {
           firstName: d.firstName,
           lastName: d.lastName,
@@ -78,10 +85,17 @@ async function main() {
           licenseNumber: d.licenseNumber,
           phone: d.phone,
           visitFee: d.fee,
+          salary: d.salary,
+          contractType: d.contract,
+          hireDate: new Date(2023, 0, 15),
           departmentId: deptMap[d.department],
+          userId: userId,
           isActive: true,
         },
       });
+      doctorIdMap[d.licenseNumber] = created.id;
+    } else {
+      doctorIdMap[d.licenseNumber] = existing.id;
     }
   }
   console.log('Doctors:', doctorsData.length);
@@ -235,8 +249,51 @@ async function main() {
   }
   console.log('Settings:', settings.length);
 
+  // ===== Payroll Data — last 6 months for each doctor =====
+  const now = new Date();
+  const doctorIds = Object.values(doctorIdMap);
+  for (const doctorId of doctorIds) {
+    const doc = await prisma.doctor.findUnique({ where: { id: doctorId } });
+    if (!doc) continue;
+
+    for (let m = 5; m >= 0; m--) {
+      const payDate = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const month = payDate.getMonth() + 1;
+      const year = payDate.getFullYear();
+      const existing = await prisma.payroll.findFirst({ where: { doctorId, month, year } });
+      if (!existing) {
+        const bonus = Math.floor(Math.random() * 5000) + 1000;
+        const overtime = Math.floor(Math.random() * 3000);
+        const deduction = Math.floor(Math.random() * 2000);
+        const totalPaid = doc.salary + overtime + bonus - deduction;
+        const isPaid = m < 5; // Last month pending, others paid
+
+        await prisma.payroll.create({
+          data: {
+            doctorId,
+            month,
+            year,
+            baseSalary: doc.salary,
+            overtime,
+            bonus,
+            deduction,
+            totalPaid,
+            status: isPaid ? 'paid' : 'pending',
+            paidDate: isPaid ? new Date(year, month, 28) : null,
+            notes: isPaid ? 'واریز شده' : 'در انتظار تایید',
+          },
+        });
+      }
+    }
+  }
+  console.log('Payroll data created for', doctorIds.length, 'doctors');
+
   console.log('\nSeeding completed!');
-  console.log('\nLogin: admin / admin123');
+  console.log('\n--- Login Credentials ---');
+  console.log('Admin:       admin / admin123');
+  console.log('Doctor:      doctor / doctor123');
+  console.log('Nurse:       nurse / nurse123');
+  console.log('Receptionist: receptionist / reception123');
 }
 
 main()

@@ -3,10 +3,12 @@ const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 
 let mainWindow = null;
 let serverProcess = null;
 const PORT = 3000;
+const HOSTNAME = '0.0.0.0'; // Listen on all interfaces for LAN access
 const APP_NAME = 'HMS - Hospital Management System';
 
 // ============================================================
@@ -15,7 +17,6 @@ const APP_NAME = 'HMS - Hospital Management System';
 const isDev = !app.isPackaged;
 const appPath = app.getAppPath();
 
-// In packaged mode, resources are in `resources/app`
 const baseDir = isDev
   ? path.resolve(appPath)
   : path.resolve(process.resourcesPath, 'app');
@@ -30,7 +31,23 @@ if (!fs.existsSync(dbDir)) {
 }
 
 // ============================================================
-// 2. Create loading screen window
+// 2. Get local IP for LAN access info
+// ============================================================
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // Skip internal (loopback) and non-IPv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+// ============================================================
+// 3. Create loading screen window
 // ============================================================
 function createLoadingWindow() {
   mainWindow = new BrowserWindow({
@@ -49,25 +66,26 @@ function createLoadingWindow() {
 }
 
 // ============================================================
-// 3. Start Next.js server
+// 4. Start Next.js server on 0.0.0.0 (accessible from LAN)
 // ============================================================
 function startServer() {
   console.log('[HMS] Starting server...');
   console.log('[HMS] Base dir:', baseDir);
   console.log('[HMS] DB dir:', dbDir);
+  console.log('[HMS] Listening on:', HOSTNAME + ':' + PORT);
 
   const env = {
     ...process.env,
     PORT: String(PORT),
-    DATABASE_URL: `file:${dbDir}/custom.db`,
+    HOSTNAME: HOSTNAME,
+    DATABASE_URL: 'file:' + dbDir + '/custom.db',
     NODE_ENV: 'production',
   };
 
   if (isDev) {
-    // Dev mode: start next dev
     serverProcess = spawn(
       process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      ['next', 'dev', '-p', String(PORT)],
+      ['next', 'dev', '-p', String(PORT), '-H', HOSTNAME],
       {
         cwd: baseDir,
         env,
@@ -76,13 +94,12 @@ function startServer() {
       }
     );
   } else {
-    // Packaged mode: start next start (requires next build first)
     const nextBin = process.platform === 'win32'
       ? 'node_modules\\.bin\\next.cmd'
       : 'node_modules/.bin/next';
     serverProcess = spawn(
       process.platform === 'win32' ? 'cmd.exe' : '/bin/bash',
-      [nextBin, 'start', '-p', String(PORT)],
+      [nextBin, 'start', '-p', String(PORT), '-H', HOSTNAME],
       {
         cwd: baseDir,
         env,
@@ -92,17 +109,15 @@ function startServer() {
     );
   }
 
-  serverProcess.stdout.on('data', (data) => {
-    const msg = data.toString();
-    console.log('[Next.js]', msg);
+  serverProcess.stdout.on('data', function (data) {
+    console.log('[Next.js]', data.toString());
   });
 
-  serverProcess.stderr.on('data', (data) => {
-    const msg = data.toString();
-    console.log('[Next.js stderr]', msg);
+  serverProcess.stderr.on('data', function (data) {
+    console.log('[Next.js stderr]', data.toString());
   });
 
-  serverProcess.on('close', (code) => {
+  serverProcess.on('close', function (code) {
     console.log('[Next.js] Process exited with code:', code);
     if (code !== 0 && code !== null) {
       if (mainWindow && mainWindow.isDestroyed() === false) {
@@ -111,31 +126,32 @@ function startServer() {
     }
   });
 
-  serverProcess.on('error', (err) => {
+  serverProcess.on('error', function (err) {
     console.error('[Next.js] Failed to start:', err.message);
   });
 }
 
 // ============================================================
-// 4. Wait for server to be ready, then load the app
+// 5. Wait for server to be ready, then load the app
 // ============================================================
-function waitForServer(maxRetries = 60) {
-  let retries = 0;
+function waitForServer(maxRetries) {
+  maxRetries = maxRetries || 60;
+  var retries = 0;
 
-  const interval = setInterval(() => {
+  var interval = setInterval(function () {
     retries++;
     console.log('[HMS] Waiting for server... (' + retries + '/' + maxRetries + ')');
 
-    const req = http.get('http://localhost:' + PORT, (res) => {
+    var req = http.get('http://localhost:' + PORT, function (res) {
       clearInterval(interval);
       console.log('[HMS] Server is ready!');
       openMainWindow();
     });
 
-    req.on('error', () => {
+    req.on('error', function () {
       if (retries >= maxRetries) {
         clearInterval(interval);
-        console.error('[HMS] Server failed to start after', maxRetries, 'seconds');
+        console.error('[HMS] Server failed to start');
         if (mainWindow && mainWindow.isDestroyed() === false) {
           mainWindow.loadFile(path.join(__dirname, 'error.html'));
         }
@@ -147,7 +163,7 @@ function waitForServer(maxRetries = 60) {
 }
 
 // ============================================================
-// 5. Open main application window
+// 6. Open main application window
 // ============================================================
 function openMainWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -170,38 +186,44 @@ function openMainWindow() {
   mainWindow.setTitle(APP_NAME);
   mainWindow.loadURL('http://localhost:' + PORT);
 
-  // Open DevTools in dev mode
   if (isDev) {
     mainWindow.webContents.openDevTools();
   }
 
-  // Remove menu bar in production
   if (!isDev) {
     Menu.setApplicationMenu(null);
   }
+
+  // Show LAN access info in console
+  var localIP = getLocalIP();
+  console.log('[HMS] ============================================');
+  console.log('[HMS] Local:  http://localhost:' + PORT);
+  console.log('[HMS] LAN:    http://' + localIP + ':' + PORT);
+  console.log('[HMS] Other computers can access via LAN URL');
+  console.log('[HMS] ============================================');
 }
 
 // ============================================================
-// 6. App lifecycle
+// 7. App lifecycle
 // ============================================================
-app.whenReady().then(() => {
+app.whenReady().then(function () {
   createLoadingWindow();
   startServer();
   waitForServer();
 });
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', function () {
   killServer();
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', function () {
   killServer();
 });
 
-app.on('activate', () => {
+app.on('activate', function () {
   if (mainWindow === null) {
     createLoadingWindow();
     openMainWindow();

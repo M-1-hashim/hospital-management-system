@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Users, Stethoscope, CalendarDays, ListOrdered, Receipt, Pill, FlaskConical, BedDouble, UserCog, BarChart3, Settings, Globe, Sun, Moon, Shield, Heart } from 'lucide-react';
+import { LayoutDashboard, Users, Stethoscope, CalendarDays, ListOrdered, Receipt, Pill, FlaskConical, BedDouble, UserCog, BarChart3, Settings, Globe, Sun, Moon, Shield, Heart, Briefcase } from 'lucide-react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHospital } from '@fortawesome/free-solid-svg-icons';
 import { cn } from '@/lib/utils';
@@ -15,22 +15,23 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { LucideIcon } from 'lucide-react';
 
-interface NavItem { key: string; icon: LucideIcon }
+interface NavItem { key: string; icon: LucideIcon; roles?: string[] }
 const navItems: NavItem[] = [
   { key: 'dashboard', icon: LayoutDashboard },
+  { key: 'doctor_portal', icon: Briefcase, roles: ['doctor'] },
   { key: 'patients', icon: Users },
-  { key: 'doctors', icon: Stethoscope },
+  { key: 'doctors', icon: Stethoscope, roles: ['admin', 'receptionist'] },
   { key: 'appointments', icon: CalendarDays },
   { key: 'queue', icon: ListOrdered },
-  { key: 'billing', icon: Receipt },
-  { key: 'pharmacy', icon: Pill },
-  { key: 'laboratory', icon: FlaskConical },
+  { key: 'billing', icon: Receipt, roles: ['admin', 'receptionist', 'accountant'] },
+  { key: 'pharmacy', icon: Pill, roles: ['admin', 'pharmacist'] },
+  { key: 'laboratory', icon: FlaskConical, roles: ['admin', 'doctor', 'labtech'] },
   { key: 'medical_records', icon: Heart },
-  { key: 'wards', icon: BedDouble },
-  { key: 'staff', icon: UserCog },
-  { key: 'reports', icon: BarChart3 },
-  { key: 'audit_log', icon: Shield },
-  { key: 'settings', icon: Settings },
+  { key: 'wards', icon: BedDouble, roles: ['admin', 'nurse'] },
+  { key: 'staff', icon: UserCog, roles: ['admin'] },
+  { key: 'reports', icon: BarChart3, roles: ['admin', 'accountant'] },
+  { key: 'audit_log', icon: Shield, roles: ['admin'] },
+  { key: 'settings', icon: Settings, roles: ['admin'] },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
@@ -58,7 +59,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Nav Items */}
       <ScrollArea className="flex-1 px-3 py-2">
         <nav className="flex flex-col gap-0.5" role="navigation">
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => !item.roles || item.roles.includes(user?.role || ''))
+            .map((item) => {
             const isActive = currentPage === item.key;
             const Icon = item.icon;
             return (

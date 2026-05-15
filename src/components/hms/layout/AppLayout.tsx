@@ -21,10 +21,12 @@ import { SettingsPage } from '@/components/hms/pages/SettingsPage';
 import MedicalRecordsPage from '@/components/hms/pages/MedicalRecordsPage';
 import QueuePage from '@/components/hms/pages/QueuePage';
 import { AuditLogPage } from '@/components/hms/pages/AuditLogPage';
+import DoctorPortalPage from '@/components/hms/pages/DoctorPortalPage';
 import { Toaster } from 'sonner';
 
 const PAGE_MAP: Record<string, React.ComponentType> = {
   dashboard: DashboardPage,
+  doctor_portal: DoctorPortalPage,
   patients: PatientsPage,
   doctors: DoctorsPage,
   appointments: AppointmentsPage,
@@ -41,7 +43,7 @@ const PAGE_MAP: Record<string, React.ComponentType> = {
 };
 
 export function AppLayout() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { isRTL, locale } = useLanguageStore();
   const { currentPage } = useNavStore();
   const { theme, colorTheme } = useThemeStore();
@@ -86,7 +88,10 @@ export function AppLayout() {
   }, [handleKeyDown]);
 
   if (!isAuthenticated) return <LoginPage />;
-  const PageComponent = PAGE_MAP[currentPage] || DashboardPage;
+  // Doctor users go directly to their portal on dashboard
+  const isDoctor = user?.role === 'doctor';
+  const effectivePage = isDoctor && currentPage === 'dashboard' ? 'doctor_portal' : currentPage;
+  const PageComponent = PAGE_MAP[effectivePage] || (isDoctor ? DoctorPortalPage : DashboardPage);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
