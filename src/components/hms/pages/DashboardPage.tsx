@@ -306,7 +306,7 @@ export default function DashboardPage() {
         apiGet<{ distribution: DepartmentDistItem[] }>('/api/reports?type=departmentDist'),
         apiGet<{ topDoctors: TopDoctor[] }>('/api/reports?type=topDoctors'),
         apiGet<{ logs: AuditLogEntry[] }>('/api/audit-logs?limit=10'),
-        apiGet<{ queues: QueueEntry[] }>('/api/queue?status=waiting'),
+        apiGet<{ queues: QueueEntry[] }>('/api/queue'),
       ]);
 
       // Stats
@@ -353,9 +353,17 @@ export default function DashboardPage() {
         setAuditLogs(fallbackAuditLogs());
       }
 
-      // Queue
+      // Queue — show called + waiting entries
       if (results[5].status === 'fulfilled' && results[5].value.queues?.length) {
-        setQueueEntries(results[5].value.queues);
+        const allQueues = results[5].value.queues;
+        const called = allQueues.filter((q) => q.status === 'called');
+        const waiting = allQueues.filter((q) => q.status === 'waiting');
+        // Put called first, then waiting
+        setQueueEntries([...called, ...waiting]);
+        // Update stats with real waiting count
+        if (results[0].status === 'fulfilled') {
+          setStats((prev) => prev ? { ...prev, queueWaiting: allQueues.filter((q) => q.status === 'waiting').length } : prev);
+        }
       } else {
         setQueueEntries(fallbackQueue());
       }
@@ -600,44 +608,68 @@ export default function DashboardPage() {
 
       {/* ── Queue Widget ────────────────────────────────────── */}
       <motion.div variants={itemVariants}>
-        <CollapsiblePanel id="dash-queue-widget" title={t('waiting_queue')} icon={ListOrdered} badge={queueEntries.length.toString()}>
+        <CollapsiblePanel id="dash-queue-widget" title={t('waiting_queue')} icon={ListOrdered} badge={queueEntries.filter((q) => q.status === 'waiting').length.toString()}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              {/* Current serving */}
-              <div className="flex flex-col items-center rounded-2xl bg-primary/10 px-6 py-4">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('current_serving')}</span>
-                <span className="mt-1 text-3xl font-bold text-primary">
-                  {queueEntries.length > 0 ? queueEntries[0].queueNumber : '—'}
-                </span>
-                {queueEntries.length > 0 && (
-                  <span className="mt-0.5 text-xs text-muted-foreground">{queueEntries[0].patientName}</span>
-                )}
-              </div>
+              {/* Current serving — called patient */}
+              {(() => {
+                const currentServing = queueEntries.find((q) => q.status === 'called');
+                return (
+                  <div className="flex flex-col items-center rounded-2xl bg-primary/10 px-6 py-4">
+                    <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('current_serving')}</span>
+                    {currentServing ? (
+                      <>
+                        <span className="mt-1 text-3xl font-bold text-primary">
+                          {String(currentServing.queueNumber).padStart(3, '0')}
+                        </span>
+                        <span className="mt-0.5 text-xs text-muted-foreground">{currentServing.patientName}</span>
+                      </>
+                    ) : (
+                      <span className="mt-1 text-3xl font-bold text-muted-foreground/40">—</span>
+                    )}
+                  </div>
+                );
+              })()}
 
-              {/* Next 3 in line */}
+              {/* Next 3 in line — waiting patients only */}
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('next')}</span>
-                {queueEntries.slice(1, 4).length > 0 ? (
-                  queueEntries.slice(1, 4).map((entry) => (
-                    <div key={entry.id} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
-                      <Badge variant="outline" className="bg-background font-mono text-xs">{entry.queueNumber}</Badge>
-                      <span className="text-sm text-foreground">{entry.patientName}</span>
-                      {entry.priority === 'urgent' && (
-                        <Badge variant="destructive" className="text-[10px] px-1 py-0">!</Badge>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <span className="text-sm text-muted-foreground">{t('no_patients_in_queue')}</span>
-                )}
+                {(() => {
+                  const waiting = queueEntries.filter((q) => q.status === 'waiting').slice(0, 3);
+                  return waiting.length > 0 ? (
+                    waiting.map((entry) => (
+                      <div key={entry.id} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5">
+                        <Badge variant="outline" className="bg-background font-mono text-xs">{entry.queueNumber}</Badge>
+                        <span className="text-sm text-foreground">{entry.patientName}</span>
+                        {entry.priority === 'urgent' && (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0">!</Badge>
+                        )}
+                        {entry.priority === 'emergency' && (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0">!!</Badge>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{t('no_patients_in_queue')}</span>
+                  );
+                })()}
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <div className="text-center">
-                <span className="block text-2xl font-bold text-foreground">{queueEntries.length}</span>
+                <span className="block text-2xl font-bold text-foreground">{queueEntries.filter((q) => q.status === 'waiting').length}</span>
                 <span className="text-xs text-muted-foreground">{t('waiting_queue').toLowerCase()}</span>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => useNavStore.getState().setCurrentPage('queue')}
+              >
+                <ArrowUpRight className="size-3.5" />
+                {t('queue')}
+              </Button>
             </div>
           </div>
         </CollapsiblePanel>
