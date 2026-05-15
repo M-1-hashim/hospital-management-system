@@ -32,7 +32,7 @@ interface QueueDisplayProps {
   currentServing: QueueEntry | null;
   nextInLine: QueueEntry[];
   totalWaiting: number;
-  onCallNext: (queueNumber: number) => void;
+  onCallNext: () => void;
   onComplete: () => void;
   announcing?: boolean;
   departmentFa?: string;
@@ -55,6 +55,11 @@ export function QueueDisplay({
   const { t, isRTL } = useLanguageStore();
 
   const displayDept = isRTL ? departmentFa : department;
+
+  // "Call Next" is enabled when there are waiting patients OR someone is being served
+  const canCallNext = totalWaiting > 0;
+  // "Complete" is only enabled when someone is currently being served
+  const canComplete = currentServing !== null;
 
   return (
     <div className="flex flex-col gap-5 rounded-2xl bg-card p-6 shadow-sm shadow-black/[0.03] dark:ring-1 dark:ring-white/[0.06]">
@@ -175,11 +180,11 @@ export function QueueDisplay({
       {/* ── Action Buttons ────────────────────────────────── */}
       <div className="flex gap-2">
         <Button
-          onClick={() => currentServing && onCallNext(currentServing.queueNumber)}
-          disabled={!currentServing}
+          onClick={onCallNext}
+          disabled={!canCallNext}
           className={cn(
             'flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90',
-            !currentServing && 'opacity-50',
+            !canCallNext && 'opacity-50',
           )}
         >
           <Megaphone className="size-4" />
@@ -187,11 +192,11 @@ export function QueueDisplay({
         </Button>
         <Button
           onClick={onComplete}
-          disabled={!currentServing}
+          disabled={!canComplete}
           variant="outline"
           className={cn(
             'flex-1 gap-2',
-            !currentServing && 'opacity-50',
+            !canComplete && 'opacity-50',
           )}
         >
           <CheckCircle2 className="size-4" />

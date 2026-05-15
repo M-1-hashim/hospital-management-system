@@ -37,12 +37,6 @@ import { announcePatient, stopAnnouncement, isAnnouncing } from '@/lib/voice-ann
 
 type PriorityFilter = 'all' | 'normal' | 'urgent' | 'emergency';
 
-interface Department {
-  id: string;
-  name: string;
-  nameFa: string;
-}
-
 // ============================================================
 // Constants
 // ============================================================
@@ -168,10 +162,10 @@ export default function QueuePage() {
   const handleCallNext = useCallback(async () => {
     setCalling(true);
     try {
+      // Send department in body — API will find next waiting patient
       const called = await apiFetch<{ queue: QueueEntry }>('/api/queue', {
         method: 'PUT',
-        params: { id: currentServing?.id || '' },
-        body: { action: 'call_next' },
+        body: { action: 'call_next', department: selectedDept },
       });
       if (called.queue) {
         toast.success(`${t('queue_called')}: #${String(called.queue.queueNumber).padStart(3, '0')} — ${called.queue.patientName}`);
@@ -188,7 +182,7 @@ export default function QueuePage() {
     } finally {
       setCalling(false);
     }
-  }, [currentServing, fetchQueues, t, speakQueueNumber]);
+  }, [selectedDept, fetchQueues, t, speakQueueNumber]);
 
   const handleRecall = useCallback(() => {
     if (!currentServing) return;

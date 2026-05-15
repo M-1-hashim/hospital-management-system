@@ -5,7 +5,10 @@ import { db } from '@/lib/db';
 // Queue API
 // GET    /api/queue?department=&status=  — list queues
 // POST   /api/queue                      — add patient to queue
-// PUT    /api/queue?id=&action=          — update queue entry
+// PUT    /api/queue?action=              — update queue entry
+//        body: { action: 'call_next', department: 'General' }
+//        body: { action: 'complete' }  (requires ?id=xxx)
+//        body: { action: 'cancel' }    (requires ?id=xxx)
 // DELETE /api/queue?id=                  — remove from queue
 // ============================================================
 
@@ -88,12 +91,59 @@ export async function PUT(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id') || '';
 
+    const body = await request.json();
+    const { action, department } = body;
+
+    // ── call_next: find next waiting patient in department ───
+    if (action === 'call_next') {
+      // Use department from body (preferred) or derive from existing entry
+      let targetDept = department || '';
+
+      if (!targetDept && id) {
+        const existing = await db.queue.findUnique({ where: { id }, select: { department: true } });
+        if (!existing) {
+          return NextResponse.json({ error: 'Queue entry not found' }, { status: 404 });
+        }
+        targetDept = existing.department;
+      }
+
+      if (!targetDept) {
+        return NextResponse.json({ error: 'department is required for call_next' }, { status: 400 });
+      }
+
+      // Find the next waiting patient in the department (urgent > normal > emergency by queue number)
+      const nextWaiting = await db.queue.findFirst({
+        where: {
+          department: targetDept,
+          status: 'waiting',
+        },
+        orderBy: [{ priority: 'desc' }, { queueNumber: 'asc' }],
+      });
+
+      if (!nextWaiting) {
+        return NextResponse.json({ error: 'No patients waiting in queue' }, { status: 404 });
+      }
+
+      const calledQueue = await db.queue.update({
+        where: { id: nextWaiting.id },
+        data: {
+          status: 'called',
+          calledAt: new Date(),
+        },
+        include: {
+          patient: {
+            select: { id: true, firstName: true, lastName: true, fileNumber: true },
+          },
+        },
+      });
+
+      return NextResponse.json({ queue: calledQueue });
+    }
+
+    // ── complete / cancel: require id ─────────────────────────
     if (!id) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 });
     }
-
-    const body = await request.json();
-    const { action } = body;
 
     const existing = await db.queue.findUnique({ where: { id } });
     if (!existing) {
@@ -103,37 +153,6 @@ export async function PUT(request: NextRequest) {
     let updateData: Record<string, unknown> = {};
 
     switch (action) {
-      case 'call_next':
-        // Find the next waiting patient in the same department (urgent > normal)
-        const nextWaiting = await db.queue.findFirst({
-          where: {
-            department: existing.department,
-            status: 'waiting',
-          },
-          orderBy: [{ priority: 'desc' }, { queueNumber: 'asc' }],
-        });
-
-        if (!nextWaiting) {
-          return NextResponse.json({ error: 'No patients waiting in queue' }, { status: 404 });
-        }
-
-        updateData = {
-          status: 'called',
-          calledAt: new Date(),
-        };
-
-        const calledQueue = await db.queue.update({
-          where: { id: nextWaiting.id },
-          data: updateData,
-          include: {
-            patient: {
-              select: { id: true, firstName: true, lastName: true, fileNumber: true },
-            },
-          },
-        });
-
-        return NextResponse.json({ queue: calledQueue });
-
       case 'complete':
         updateData = {
           status: 'completed',
