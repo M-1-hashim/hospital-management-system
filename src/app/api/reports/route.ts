@@ -269,6 +269,7 @@ async function getPharmacyReport(searchParams: URLSearchParams) {
 }
 
 // Weekly patient visits report (last 7 days)
+// Counts APPOINTMENTS (visits) per day, not patient registrations
 async function getWeeklyPatientsReport() {
   const now = new Date();
   const days: { day: string; date: string; count: number }[] = [];
@@ -277,8 +278,8 @@ async function getWeeklyPatientsReport() {
     const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
     const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-    const count = await db.patient.count({
-      where: { createdAt: { gte: dayStart, lte: dayEnd } },
+    const count = await db.appointment.count({
+      where: { date: { gte: dayStart, lte: dayEnd } },
     });
     days.push({
       day: date.toLocaleDateString('en', { weekday: 'short' }),

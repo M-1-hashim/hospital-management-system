@@ -324,9 +324,10 @@ export default function DashboardPage() {
         setStats(fallbackStats());
       }
 
-      // Weekly data
+      // Weekly data — use fallback if all values are zero (no historical data yet)
       if (results[1].status === 'fulfilled' && results[1].value.days?.length) {
-        setWeeklyData(results[1].value.days);
+        const hasData = results[1].value.days.some((d) => d.count > 0);
+        setWeeklyData(hasData ? results[1].value.days : fallbackWeeklyData());
       } else {
         setWeeklyData(fallbackWeeklyData());
       }
