@@ -6,7 +6,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
-  // Departments
+  // ===== Departments =====
+  // name is NOT @unique in schema, so we use findFirst + create pattern
   const departments = [
     { name: 'Cardiology', nameFa: 'قلبی و عروقی', description: 'Heart and vascular diseases', floor: 3, phone: '101' },
     { name: 'Neurology', nameFa: 'مغز و اعصاب', description: 'Brain and nervous system', floor: 3, phone: '102' },
@@ -20,16 +21,14 @@ async function main() {
 
   const deptMap = {};
   for (const dept of departments) {
-    const created = await prisma.department.upsert({
-      where: { name: dept.name },
-      update: {},
-      create: dept,
-    });
-    deptMap[dept.name] = created.id;
+    const existing = await prisma.department.findFirst({ where: { name: dept.name } });
+    const record = existing || await prisma.department.create({ data: dept });
+    deptMap[dept.name] = record.id;
   }
   console.log('Departments:', departments.length);
 
-  // Users
+  // ===== Users =====
+  // username IS @unique, so upsert works
   const users = [
     { username: 'admin', password: 'admin123', fullName: 'مدیر سیستم', role: 'admin', email: 'admin@hms.af', phone: '+93700000001' },
     { username: 'doctor', password: 'doctor123', fullName: 'دکتر احمد رحیمی', role: 'doctor', email: 'ahmad@hms.af', phone: '+93700000002' },
@@ -58,7 +57,8 @@ async function main() {
   }
   console.log('Users:', users.length);
 
-  // Doctors
+  // ===== Doctors =====
+  // licenseNumber is NOT @unique, use findFirst + create
   const doctorsData = [
     { firstName: 'احمد', lastName: 'رحیمی', specialty: 'Cardiology', department: 'Cardiology', licenseNumber: 'MED-001', fee: 500, phone: '+93710000001' },
     { firstName: 'محمد', lastName: 'نوری', specialty: 'Neurology', department: 'Neurology', licenseNumber: 'MED-002', fee: 600, phone: '+93710000002' },
@@ -68,24 +68,26 @@ async function main() {
   ];
 
   for (const d of doctorsData) {
-    await prisma.doctor.upsert({
-      where: { licenseNumber: d.licenseNumber },
-      update: {},
-      create: {
-        firstName: d.firstName,
-        lastName: d.lastName,
-        specialty: d.specialty,
-        licenseNumber: d.licenseNumber,
-        phone: d.phone,
-        visitFee: d.fee,
-        departmentId: deptMap[d.department],
-        isActive: true,
-      },
-    });
+    const existing = await prisma.doctor.findFirst({ where: { licenseNumber: d.licenseNumber } });
+    if (!existing) {
+      await prisma.doctor.create({
+        data: {
+          firstName: d.firstName,
+          lastName: d.lastName,
+          specialty: d.specialty,
+          licenseNumber: d.licenseNumber,
+          phone: d.phone,
+          visitFee: d.fee,
+          departmentId: deptMap[d.department],
+          isActive: true,
+        },
+      });
+    }
   }
   console.log('Doctors:', doctorsData.length);
 
-  // Patients
+  // ===== Patients =====
+  // nationalId is NOT @unique, use findFirst + create
   const patientsData = [
     { firstName: 'محمد', lastName: 'کریمی', nationalId: '1234567890', phone: '+93700001001', gender: 'male', bloodType: 'A+' },
     { firstName: 'فاطمه', lastName: 'احمدی', nationalId: '1234567891', phone: '+93700001002', gender: 'female', bloodType: 'B+' },
@@ -99,25 +101,27 @@ async function main() {
 
   for (let i = 0; i < patientsData.length; i++) {
     const p = patientsData[i];
-    await prisma.patient.upsert({
-      where: { nationalId: p.nationalId },
-      update: {},
-      create: {
-        fileNumber: 'P-' + String(1001 + i),
-        firstName: p.firstName,
-        lastName: p.lastName,
-        nationalId: p.nationalId,
-        phone: p.phone,
-        gender: p.gender,
-        bloodType: p.bloodType,
-        status: 'outpatient',
-        dateOfBirth: new Date(1990 + (i * 5), i % 12, (i * 3) + 1),
-      },
-    });
+    const existing = await prisma.patient.findFirst({ where: { nationalId: p.nationalId } });
+    if (!existing) {
+      await prisma.patient.create({
+        data: {
+          fileNumber: 'P-' + String(1001 + i),
+          firstName: p.firstName,
+          lastName: p.lastName,
+          nationalId: p.nationalId,
+          phone: p.phone,
+          gender: p.gender,
+          bloodType: p.bloodType,
+          status: 'outpatient',
+          dateOfBirth: new Date(1990 + (i * 5), i % 12, (i * 3) + 1),
+        },
+      });
+    }
   }
   console.log('Patients:', patientsData.length);
 
-  // Medicines
+  // ===== Medicines =====
+  // id is auto-generated cuid, use findFirst + create by name
   const medicinesData = [
     { name: 'Paracetamol 500mg', nameFa: 'پاراسیتامول', category: 'Analgesic', dosageForm: 'tablet', strength: '500mg', stock: 5000, price: 10, minStock: 500 },
     { name: 'Amoxicillin 250mg', nameFa: 'آموکسی‌سیلین', category: 'Antibiotic', dosageForm: 'capsule', strength: '250mg', stock: 3000, price: 15, minStock: 300 },
@@ -130,31 +134,32 @@ async function main() {
   ];
 
   for (const m of medicinesData) {
-    await prisma.medicine.upsert({
-      where: { id: m.name.toLowerCase().replace(/[^a-z0-9]/g, '-') },
-      update: {},
-      create: {
-        name: m.name,
-        nameFa: m.nameFa,
-        category: m.category,
-        dosageForm: m.dosageForm,
-        strength: m.strength,
-        stock: m.stock,
-        price: m.price,
-        minStock: m.minStock,
-        expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-        batchNumber: 'BATCH-' + Date.now().toString(36).toUpperCase(),
-      },
-    });
+    const existing = await prisma.medicine.findFirst({ where: { name: m.name } });
+    if (!existing) {
+      await prisma.medicine.create({
+        data: {
+          name: m.name,
+          nameFa: m.nameFa,
+          category: m.category,
+          dosageForm: m.dosageForm,
+          strength: m.strength,
+          stock: m.stock,
+          price: m.price,
+          minStock: m.minStock,
+          expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          batchNumber: 'BATCH-' + Date.now().toString(36).toUpperCase(),
+        },
+      });
+    }
   }
   console.log('Medicines:', medicinesData.length);
 
-  // Appointments — spread across last 7 days so weekly chart has data
+  // ===== Appointments — spread across last 7 days for weekly chart =====
   const allPatients = await prisma.patient.findMany({ take: 8 });
   const allDoctors = await prisma.doctor.findMany({ take: 5 });
   if (allPatients.length > 0 && allDoctors.length > 0) {
-    // Create 2-4 appointments per day for the last 7 days
     const appointmentsPerDay = [3, 2, 4, 3, 2, 3, 4]; // day-6 to today
+    let totalCreated = 0;
     for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
       const count = appointmentsPerDay[6 - dayOffset];
       const dayDate = new Date();
@@ -178,12 +183,14 @@ async function main() {
             notes: 'General checkup',
           },
         });
+        totalCreated++;
       }
     }
-    console.log('Appointments:', appointmentsPerDay.reduce((a, b) => a + b, 0), '(spread across 7 days)');
+    console.log('Appointments:', totalCreated, '(spread across 7 days)');
   }
 
-  // Blood Bags
+  // ===== Blood Bags =====
+  // bagNumber IS @unique, so upsert works
   const bloodBags = [
     { bagNumber: 'BB-001', donorName: 'احمد شیرزاد', bloodType: 'A+', status: 'stored' },
     { bagNumber: 'BB-002', donorName: 'محمد حسینی', bloodType: 'B+', status: 'stored' },
@@ -211,7 +218,8 @@ async function main() {
   }
   console.log('Blood Bags:', bloodBags.length);
 
-  // Hospital Settings
+  // ===== Hospital Settings =====
+  // key IS @unique, so upsert works
   const settings = [
     { key: 'hospital_name', value: 'بیمارستان مرکزی کابل' },
     { key: 'hospital_name_en', value: 'Kabul Central Hospital' },
@@ -227,7 +235,7 @@ async function main() {
   }
   console.log('Settings:', settings.length);
 
-  console.log('\n✅ Seeding completed!');
+  console.log('\nSeeding completed!');
   console.log('\nLogin: admin / admin123');
 }
 
