@@ -6,8 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
-  // ===== Departments =====
-  // name is NOT @unique in schema, so we use findFirst + create pattern
+  // ===== Departments (name is NOT unique → use findFirst + create) =====
   const departments = [
     { name: 'Cardiology', nameFa: 'قلبی و عروقی', description: 'Heart and vascular diseases', floor: 3, phone: '101' },
     { name: 'Neurology', nameFa: 'مغز و اعصاب', description: 'Brain and nervous system', floor: 3, phone: '102' },
@@ -21,14 +20,15 @@ async function main() {
 
   const deptMap = {};
   for (const dept of departments) {
-    const existing = await prisma.department.findFirst({ where: { name: dept.name } });
-    const record = existing || await prisma.department.create({ data: dept });
-    deptMap[dept.name] = record.id;
+    let existing = await prisma.department.findFirst({ where: { name: dept.name } });
+    if (!existing) {
+      existing = await prisma.department.create({ data: dept });
+    }
+    deptMap[dept.name] = existing.id;
   }
   console.log('Departments:', departments.length);
 
-  // ===== Users =====
-  // username IS @unique, so upsert works
+  // ===== Users (username IS unique → upsert OK) =====
   const users = [
     { username: 'admin', password: 'admin123', fullName: 'مدیر سیستم', role: 'admin', email: 'admin@hms.af', phone: '+93700000001' },
     { username: 'doctor', password: 'doctor123', fullName: 'دکتر احمد رحیمی', role: 'doctor', email: 'ahmad@hms.af', phone: '+93700000002' },
@@ -39,11 +39,12 @@ async function main() {
     { username: 'accountant', password: 'accountant123', fullName: 'حسابدار کریم', role: 'accountant', email: 'karim@hms.af', phone: '+93700000007' },
   ];
 
+  const userMap = {};
   for (const u of users) {
     const passwordHash = await bcrypt.hash(u.password, 10);
-    await prisma.user.upsert({
+    const user = await prisma.user.upsert({
       where: { username: u.username },
-      update: {},
+      update: { passwordHash, fullName: u.fullName, role: u.role, email: u.email, phone: u.phone, isActive: true },
       create: {
         username: u.username,
         passwordHash,
@@ -54,30 +55,25 @@ async function main() {
         isActive: true,
       },
     });
+    userMap[u.username] = user.id;
   }
   console.log('Users:', users.length);
 
-  // ===== Doctors =====
-  // licenseNumber is NOT @unique, use findFirst + create
+  // ===== Doctors (licenseNumber is NOT unique → findFirst + create) =====
   const doctorsData = [
-    { firstName: 'احمد', lastName: 'رحیمی', specialty: 'Cardiology', department: 'Cardiology', licenseNumber: 'MED-001', fee: 500, salary: 80000, contract: 'fulltime', username: 'doctor', phone: '+93710000001' },
-    { firstName: 'محمد', lastName: 'نوری', specialty: 'Neurology', department: 'Neurology', licenseNumber: 'MED-002', fee: 600, salary: 90000, contract: 'fulltime', username: null, phone: '+93710000002' },
-    { firstName: 'زرما', lastName: 'هاتف', specialty: 'Pediatrics', department: 'Pediatrics', licenseNumber: 'MED-003', fee: 400, salary: 65000, contract: 'fulltime', username: null, phone: '+93710000003' },
-    { firstName: 'حمید', lastName: 'رضایی', specialty: 'Surgery', department: 'Surgery', licenseNumber: 'MED-004', fee: 800, salary: 120000, contract: 'fulltime', username: null, phone: '+93710000004' },
-    { firstName: 'لیلا', lastName: 'احمدی', specialty: 'Gynecology', department: 'Gynecology', licenseNumber: 'MED-005', fee: 550, salary: 75000, contract: 'parttime', username: null, phone: '+93710000005' },
+    { firstName: 'احمد', lastName: 'رحیمی', specialty: 'Cardiology', department: 'Cardiology', licenseNumber: 'MED-001', fee: 500, phone: '+93710000001' },
+    { firstName: 'محمد', lastName: 'نوری', specialty: 'Neurology', department: 'Neurology', licenseNumber: 'MED-002', fee: 600, phone: '+93710000002' },
+    { firstName: 'زرما', lastName: 'هاتف', specialty: 'Pediatrics', department: 'Pediatrics', licenseNumber: 'MED-003', fee: 400, phone: '+93710000003' },
+    { firstName: 'حمید', lastName: 'رضایی', specialty: 'Surgery', department: 'Surgery', licenseNumber: 'MED-004', fee: 800, phone: '+93710000004' },
+    { firstName: 'لیلا', lastName: 'احمدی', specialty: 'Gynecology', department: 'Gynecology', licenseNumber: 'MED-005', fee: 550, phone: '+93710000005' },
   ];
 
-  const doctorIdMap = {};
-  for (const d of doctorsData) {
-    const existing = await prisma.doctor.findFirst({ where: { licenseNumber: d.licenseNumber } });
+  const doctorMap = {};
+  for (let i = 0; i < doctorsData.length; i++) {
+    const d = doctorsData[i];
+    let existing = await prisma.doctor.findFirst({ where: { licenseNumber: d.licenseNumber } });
     if (!existing) {
-      // Link doctor to user if username provided
-      let userId = null;
-      if (d.username) {
-        const u = await prisma.user.findFirst({ where: { username: d.username } });
-        if (u) userId = u.id;
-      }
-      const created = await prisma.doctor.create({
+      existing = await prisma.doctor.create({
         data: {
           firstName: d.firstName,
           lastName: d.lastName,
@@ -85,23 +81,18 @@ async function main() {
           licenseNumber: d.licenseNumber,
           phone: d.phone,
           visitFee: d.fee,
-          salary: d.salary,
-          contractType: d.contract,
-          hireDate: new Date(2023, 0, 15),
           departmentId: deptMap[d.department],
-          userId: userId,
           isActive: true,
+          // Link admin user to first doctor, doctor user to second doctor, etc.
+          ...(i === 0 ? { userId: userMap['admin'] } : {}),
         },
       });
-      doctorIdMap[d.licenseNumber] = created.id;
-    } else {
-      doctorIdMap[d.licenseNumber] = existing.id;
     }
+    doctorMap[d.licenseNumber] = existing.id;
   }
   console.log('Doctors:', doctorsData.length);
 
-  // ===== Patients =====
-  // nationalId is NOT @unique, use findFirst + create
+  // ===== Patients (nationalId is NOT unique → findFirst + create) =====
   const patientsData = [
     { firstName: 'محمد', lastName: 'کریمی', nationalId: '1234567890', phone: '+93700001001', gender: 'male', bloodType: 'A+' },
     { firstName: 'فاطمه', lastName: 'احمدی', nationalId: '1234567891', phone: '+93700001002', gender: 'female', bloodType: 'B+' },
@@ -115,9 +106,9 @@ async function main() {
 
   for (let i = 0; i < patientsData.length; i++) {
     const p = patientsData[i];
-    const existing = await prisma.patient.findFirst({ where: { nationalId: p.nationalId } });
+    let existing = await prisma.patient.findFirst({ where: { nationalId: p.nationalId } });
     if (!existing) {
-      await prisma.patient.create({
+      existing = await prisma.patient.create({
         data: {
           fileNumber: 'P-' + String(1001 + i),
           firstName: p.firstName,
@@ -134,8 +125,7 @@ async function main() {
   }
   console.log('Patients:', patientsData.length);
 
-  // ===== Medicines =====
-  // id is auto-generated cuid, use findFirst + create by name
+  // ===== Medicines (name is NOT unique → findFirst + create) =====
   const medicinesData = [
     { name: 'Paracetamol 500mg', nameFa: 'پاراسیتامول', category: 'Analgesic', dosageForm: 'tablet', strength: '500mg', stock: 5000, price: 10, minStock: 500 },
     { name: 'Amoxicillin 250mg', nameFa: 'آموکسی‌سیلین', category: 'Antibiotic', dosageForm: 'capsule', strength: '250mg', stock: 3000, price: 15, minStock: 300 },
@@ -148,9 +138,9 @@ async function main() {
   ];
 
   for (const m of medicinesData) {
-    const existing = await prisma.medicine.findFirst({ where: { name: m.name } });
+    let existing = await prisma.medicine.findFirst({ where: { name: m.name } });
     if (!existing) {
-      await prisma.medicine.create({
+      existing = await prisma.medicine.create({
         data: {
           name: m.name,
           nameFa: m.nameFa,
@@ -168,43 +158,48 @@ async function main() {
   }
   console.log('Medicines:', medicinesData.length);
 
-  // ===== Appointments — spread across last 7 days for weekly chart =====
-  const allPatients = await prisma.patient.findMany({ take: 8 });
-  const allDoctors = await prisma.doctor.findMany({ take: 5 });
+  // ===== Appointments (spread across 7 days for weekly chart) =====
+  const allPatients = await prisma.patient.findMany({ take: 5 });
+  const allDoctors = await prisma.doctor.findMany({ take: 3 });
   if (allPatients.length > 0 && allDoctors.length > 0) {
-    const appointmentsPerDay = [3, 2, 4, 3, 2, 3, 4]; // day-6 to today
-    let totalCreated = 0;
-    for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
-      const count = appointmentsPerDay[6 - dayOffset];
-      const dayDate = new Date();
-      dayDate.setDate(dayDate.getDate() - dayOffset);
-      dayDate.setHours(8, 0, 0, 0);
+    // Check existing count
+    const existingAppts = await prisma.appointment.count();
+    if (existingAppts === 0) {
+      const statuses = ['confirmed', 'completed', 'completed', 'pending', 'confirmed', 'completed', 'no_show', 'confirmed', 'completed', 'pending', 'confirmed', 'completed', 'cancelled', 'confirmed', 'completed', 'pending', 'confirmed', 'completed', 'confirmed', 'completed', 'pending'];
+      const dayCounts = [6, 8, 5, 11, 9, 7, 12]; // Mon-Sun
+      const now = new Date();
+      const today = now.getDay(); // 0=Sun, 1=Mon...
+      let apptIdx = 0;
 
-      for (let j = 0; j < count; j++) {
-        const patientIdx = (dayOffset * count + j) % allPatients.length;
-        const doctorIdx = (dayOffset + j) % allDoctors.length;
-        const apptDate = new Date(dayDate);
-        apptDate.setHours(8 + j, (j * 15) % 60);
+      for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
+        const dayIdx = (today - dayOffset + 7) % 7;
+        const count = dayCounts[dayIdx === 0 ? 6 : dayIdx - 1]; // Map to Mon=0..Sun=6
+        const apptDate = new Date(now);
+        apptDate.setDate(apptDate.getDate() - dayOffset);
+        apptDate.setHours(0, 0, 0, 0);
 
-        await prisma.appointment.create({
-          data: {
-            patientId: allPatients[patientIdx].id,
-            doctorId: allDoctors[doctorIdx].id,
-            date: apptDate,
-            time: String(8 + j).padStart(2, '0') + ':' + String((j * 15) % 60).padStart(2, '0'),
-            status: ['confirmed', 'completed', 'completed', 'pending'][j % 4],
-            type: 'visit',
-            notes: 'General checkup',
-          },
-        });
-        totalCreated++;
+        for (let j = 0; j < count; j++) {
+          await prisma.appointment.create({
+            data: {
+              patientId: allPatients[apptIdx % allPatients.length].id,
+              doctorId: allDoctors[apptIdx % allDoctors.length].id,
+              date: apptDate,
+              time: String(8 + (j % 10)).padStart(2, '0') + ':' + String((j * 15) % 60).padStart(2, '0'),
+              status: statuses[apptIdx % statuses.length],
+              type: 'visit',
+              notes: 'General checkup',
+            },
+          });
+          apptIdx++;
+        }
       }
+      console.log('Appointments: 21 (across 7 days)');
+    } else {
+      console.log('Appointments: already exist (' + existingAppts + ')');
     }
-    console.log('Appointments:', totalCreated, '(spread across 7 days)');
   }
 
-  // ===== Blood Bags =====
-  // bagNumber IS @unique, so upsert works
+  // ===== Blood Bags (bagNumber IS unique → upsert OK) =====
   const bloodBags = [
     { bagNumber: 'BB-001', donorName: 'احمد شیرزاد', bloodType: 'A+', status: 'stored' },
     { bagNumber: 'BB-002', donorName: 'محمد حسینی', bloodType: 'B+', status: 'stored' },
@@ -232,8 +227,7 @@ async function main() {
   }
   console.log('Blood Bags:', bloodBags.length);
 
-  // ===== Hospital Settings =====
-  // key IS @unique, so upsert works
+  // ===== Hospital Settings (key IS unique → upsert OK) =====
   const settings = [
     { key: 'hospital_name', value: 'بیمارستان مرکزی کابل' },
     { key: 'hospital_name_en', value: 'Kabul Central Hospital' },
@@ -249,51 +243,38 @@ async function main() {
   }
   console.log('Settings:', settings.length);
 
-  // ===== Payroll Data — last 6 months for each doctor =====
-  const now = new Date();
-  const doctorIds = Object.values(doctorIdMap);
-  for (const doctorId of doctorIds) {
-    const doc = await prisma.doctor.findUnique({ where: { id: doctorId } });
-    if (!doc) continue;
-
-    for (let m = 5; m >= 0; m--) {
-      const payDate = new Date(now.getFullYear(), now.getMonth() - m, 1);
-      const month = payDate.getMonth() + 1;
-      const year = payDate.getFullYear();
-      const existing = await prisma.payroll.findFirst({ where: { doctorId, month, year } });
-      if (!existing) {
-        const bonus = Math.floor(Math.random() * 5000) + 1000;
-        const overtime = Math.floor(Math.random() * 3000);
-        const deduction = Math.floor(Math.random() * 2000);
-        const totalPaid = doc.salary + overtime + bonus - deduction;
-        const isPaid = m < 5; // Last month pending, others paid
-
-        await prisma.payroll.create({
+  // ===== Queue entries (sample data for dashboard) =====
+  const existingQueues = await prisma.queue.count();
+  if (existingQueues === 0) {
+    const queueDepts = ['Cardiology', 'General Medicine', 'Pediatrics'];
+    let queueNum = 1;
+    for (const dept of queueDepts) {
+      for (let i = 0; i < 4; i++) {
+        await prisma.queue.create({
           data: {
-            doctorId,
-            month,
-            year,
-            baseSalary: doc.salary,
-            overtime,
-            bonus,
-            deduction,
-            totalPaid,
-            status: isPaid ? 'paid' : 'pending',
-            paidDate: isPaid ? new Date(year, month, 28) : null,
-            notes: isPaid ? 'واریز شده' : 'در انتظار تایید',
+            queueNumber: queueNum++,
+            patientName: allPatients[i % allPatients.length]?.firstName + ' ' + allPatients[i % allPatients.length]?.lastName || 'بیمار ' + queueNum,
+            patientId: allPatients[i % allPatients.length]?.id,
+            priority: i === 0 ? 'urgent' : 'normal',
+            department: dept,
+            status: i === 0 ? 'called' : 'waiting',
+            calledAt: i === 0 ? new Date() : null,
           },
         });
       }
     }
+    console.log('Queue: 12 entries created');
   }
-  console.log('Payroll data created for', doctorIds.length, 'doctors');
 
-  console.log('\nSeeding completed!');
-  console.log('\n--- Login Credentials ---');
-  console.log('Admin:       admin / admin123');
-  console.log('Doctor:      doctor / doctor123');
-  console.log('Nurse:       nurse / nurse123');
-  console.log('Receptionist: receptionist / reception123');
+  console.log('\n✅ Seeding completed!');
+  console.log('\nLogin credentials:');
+  console.log('  admin       / admin123       (مدیر سیستم)');
+  console.log('  doctor      / doctor123      (دکتر احمد رحیمی)');
+  console.log('  nurse       / nurse123       (پرستار فاطمه)');
+  console.log('  receptionist/ reception123   (مسعود محمودی)');
+  console.log('  pharmacist  / pharmacist123  (داروساز سارا)');
+  console.log('  labtech     / labtech123     (فنی آزمایشگاه یاسمن)');
+  console.log('  accountant  / accountant123  (حسابدار کریم)');
 }
 
 main()
